@@ -6,9 +6,10 @@ import re
 import sys
 from pathlib import Path
 
+from .briefing import build_briefing, read_handoff
 from .config import DATA_RELATIVE, load_llm_config, resolve_data
 from .exporter import export_project
-from .init_scan import generate_skeleton
+from .init_scan import _human_knowledge_currents, generate_skeleton, scan_anomalies, survey_terrain
 from .llm import LLMClient, LLMError
 from .maintain import apply_proposal, maintain_stages, write_proposal
 from .scheduler import install_schedule, remove_schedule, show_schedule
@@ -62,10 +63,12 @@ def cmd_init(args) -> int:
     path = root / DATA_RELATIVE
     if path.exists() and not args.force:
         raise FileExistsError(f"Already exists: {path}")
-    title = args.name or (root.name if args.yes else input(f"Project name [{root.name}]: ").strip() or root.name)
-    subtitle = args.description or ("" if args.yes else input("One-line description: ").strip())
+    # Agents and CI run without a tty; prompting there raises EOFError mid-init.
+    ask = not args.yes and sys.stdin.isatty()
+    title = args.name or ((input(f"Project name [{root.name}]: ").strip() or root.name) if ask else root.name)
+    subtitle = args.description or (input("One-line description: ").strip() if ask else "")
     modules = "" if args.scan else (
-        args.modules or ("" if args.yes else input("Main modules (comma-separated; blank for recommended Currents): ").strip())
+        args.modules or (input("Main modules (comma-separated; blank for recommended Currents): ").strip() if ask else "")
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     if args.scan:
@@ -73,9 +76,17 @@ def cmd_init(args) -> int:
         data, evidence = generate_skeleton(root, title, subtitle, LLMClient(config))
         evidence_path = path.parent / "scan-evidence.json"
         evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # Leads live beside the knowledge base, never inside it: a Stage is meant to
+        # be trusted, an anomaly is meant to be checked, and one shelf cannot hold both.
+        anomalies_path = path.parent / "scan-anomalies.json"
+        anomalies_path.write_text(
+            json.dumps(scan_anomalies(root), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     else:
         if modules:
+            # Named modules are code-shaped too, so the same guarantee applies as
+            # for --scan: the map needs somewhere to hold what was never committed.
             currents = _module_currents(modules)
+            currents.extend(_human_knowledge_currents({item["id"] for item in currents}))
         else:
             currents = []
             for cid, name, blurb in SKELETON:
@@ -88,7 +99,8 @@ def cmd_init(args) -> int:
     (path.parent / "backups").mkdir(exist_ok=True)
     (path.parent / "proposals").mkdir(exist_ok=True)
     _print({"created": str(path), "currents": [item["id"] for item in data["currents"]],
-            "scan_evidence": str(path.parent / "scan-evidence.json") if args.scan else None})
+            "scan_evidence": str(path.parent / "scan-evidence.json") if args.scan else None,
+            "scan_anomalies": str(path.parent / "scan-anomalies.json") if args.scan else None})
     return 0
 
 
@@ -162,6 +174,33 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_survey(args) -> int:
+    _print(survey_terrain(Path(args.directory).expanduser().resolve()))
+    return 0
+
+
+def cmd_brief(args) -> int:
+    data_path = resolve_data(args.data)
+    root = data_path.parent.parent
+    data = json.loads(data_path.read_text(encoding="utf-8"))
+    anomalies_path = data_path.parent / "scan-anomalies.json"
+    anomalies = scan_anomalies(root)
+    anomalies_path.write_text(json.dumps(anomalies, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _print(build_briefing(data, anomalies, read_handoff(root)))
+    return 0
+
+
+def cmd_anomalies(args) -> int:
+    root = Path(args.directory).expanduser().resolve()
+    report = scan_anomalies(root)
+    data_dir = root / ".turritopsis"
+    if (data_dir / "stages.json").is_file():
+        (data_dir / "scan-anomalies.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _print(report)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="turritopsis", description="Shared project truth and handoff over MCP")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -172,6 +211,15 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--scan", action="store_true"); init.add_argument("--model")
     init.add_argument("--force", action="store_true")
     init.set_defaults(func=cmd_init)
+    survey = sub.add_parser("survey", help="Report what would mislead a newcomer to this repository")
+    survey.add_argument("directory", nargs="?", default=".")
+    survey.set_defaults(func=cmd_survey)
+    brief = sub.add_parser("brief", help="Handoff packet for an arriving agent: what is settled, what to read, what to ask")
+    brief.add_argument("--data")
+    brief.set_defaults(func=cmd_brief)
+    anomalies = sub.add_parser("anomalies", help="Report machine-checkable disagreements between project layers")
+    anomalies.add_argument("directory", nargs="?", default=".")
+    anomalies.set_defaults(func=cmd_anomalies)
     add = sub.add_parser("add", help="Add an empty Stage")
     add.add_argument("current_id"); add.add_argument("stage_id"); add.add_argument("title"); add.add_argument("--data")
     add.set_defaults(func=cmd_add)

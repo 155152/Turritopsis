@@ -65,6 +65,10 @@ Open `http://127.0.0.1:3013/` for the human Project Map. The same process serves
 
 Remote exposure is explicit (`--host 0.0.0.0`) and should be placed behind an authentication layer.
 
+### Agent onboarding skill
+
+The repository includes a real Codex-compatible Skill at `skills/turritopsis-onboarding/`. Copy that directory into your Codex skills folder, then invoke `$turritopsis-onboarding` when an agent joins or resumes a Turritopsis-managed project. The Skill routes through the four MCP tools, uses `brief` for cold start, and keeps anomalies separate from canonical truth.
+
 ## Knowledge model
 
 A **Current** routes a kind of project question. The default currents are `anatomy`, `flow`, `bounds`, `manual`, and `genesis`; a long-lived domain may also be its own Current.
@@ -102,6 +106,7 @@ All reads reload `stages.json`. Writes take a file lock, compare only the target
 ├── stages.json
 ├── config.json
 ├── scan-evidence.json
+├── scan-anomalies.json
 ├── changelog.jsonl
 ├── maintenance.jsonl
 ├── backups/
@@ -135,6 +140,9 @@ turritopsis maintain --proposal-only
 turritopsis maintain --schedule "0 3 * * *" --model CHEAP_MODEL
 turritopsis maintain --show-schedule
 turritopsis maintain --unschedule
+turritopsis survey
+turritopsis anomalies
+turritopsis brief
 turritopsis export --format md
 turritopsis export --format json --output project-knowledge.json
 ```

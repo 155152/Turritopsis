@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,11 @@ from turritopsis.maintain import maintain_stages
 class SkeletonLLM:
     def complete_json(self, system, prompt, schema, schema_name):
         assert "README.md" in prompt and "pyproject.toml" in prompt
-        assert "QUEUE = 'jobs'" in prompt
+        # Source reaches the model as declarations, not as bodies: the signature
+        # is present, the implementation line that produced it is not.
+        assert "def enqueue(job, priority)" in prompt
+        assert "src/service.py" in prompt
+        assert "QUEUE = 'jobs'" not in prompt
         assert "never invent" in system.lower()
         assert schema_name == "turritopsis_project_skeleton"
         return {"currents": [
@@ -57,7 +62,10 @@ class MaintenanceLLM:
 def test_init_with_modules_creates_addressable_empty_knowledge(tmp_path):
     assert main(["init", str(tmp_path), "--yes", "--name", "Demo", "--modules", "API, Worker"]) == 0
     data = json.loads((tmp_path / ".turritopsis" / "stages.json").read_text(encoding="utf-8"))
-    assert [item["id"] for item in data["currents"]] == ["api", "worker"]
+    # Named modules are code-shaped, so the human-knowledge Currents are added too:
+    # without them there is nowhere to record what was never committed.
+    assert [item["id"] for item in data["currents"]] == [
+        "api", "worker", "genesis", "bounds", "manual"]
     assert data["currents"][0]["stages"][0]["id"] == "api.overview"
     assert "Search hints:" in data["currents"][0]["stages"][0]["body"]
     assert "[Placeholder:" in data["currents"][0]["stages"][0]["body"]
@@ -66,15 +74,27 @@ def test_init_with_modules_creates_addressable_empty_knowledge(tmp_path):
 def test_init_accepts_non_ascii_module_names(tmp_path):
     assert main(["init", str(tmp_path), "--yes", "--modules", "后端, 前端"]) == 0
     data = json.loads((tmp_path / ".turritopsis" / "stages.json").read_text(encoding="utf-8"))
-    assert [item["id"] for item in data["currents"]] == ["module-1", "module-2"]
-    assert [item["name"] for item in data["currents"]] == ["后端", "前端"]
+    named = data["currents"][:2]
+    assert [item["id"] for item in named] == ["module-1", "module-2"]
+    assert [item["name"] for item in named] == ["后端", "前端"]
+    assert [item["id"] for item in data["currents"][2:]] == ["genesis", "bounds", "manual"]
+
+
+def test_init_without_tty_falls_back_to_defaults(tmp_path, monkeypatch):
+    # Agents and CI have no tty. Prompting there used to raise EOFError.
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    assert main(["init", str(tmp_path)]) == 0
+    data = json.loads((tmp_path / ".turritopsis" / "stages.json").read_text(encoding="utf-8"))
+    assert data["title"] == tmp_path.name
+    assert [item["id"] for item in data["currents"]] == ["anatomy", "flow", "bounds", "manual", "genesis"]
 
 
 def test_init_scan_uses_llm_to_write_canonical_skeleton(tmp_path, monkeypatch):
     (tmp_path / "src").mkdir()
     (tmp_path / "README.md").write_text("# Sample\nA queued service.", encoding="utf-8")
     (tmp_path / "pyproject.toml").write_text("[project]\nname='sample'", encoding="utf-8")
-    (tmp_path / "src" / "service.py").write_text("QUEUE = 'jobs'", encoding="utf-8")
+    (tmp_path / "src" / "service.py").write_text(
+        "QUEUE = 'jobs'\n\n\ndef enqueue(job, priority):\n    return QUEUE\n", encoding="utf-8")
     config_dir = tmp_path / ".turritopsis"
     config_dir.mkdir()
     (config_dir / "config.json").write_text(json.dumps({"llm": {
@@ -84,7 +104,13 @@ def test_init_scan_uses_llm_to_write_canonical_skeleton(tmp_path, monkeypatch):
 
     assert main(["init", str(tmp_path), "--yes", "--name", "Sample", "--scan"]) == 0
     data = json.loads((config_dir / "stages.json").read_text(encoding="utf-8"))
-    assert [current["id"] for current in data["currents"]] == ["product", "runtime", "operations"]
+    ids = [current["id"] for current in data["currents"]]
+    assert ids[:3] == ["product", "runtime", "operations"]
+    # A scan sees only code, so it only ever proposes code-shaped Currents. The map
+    # still needs somewhere to hold what was never committed, or an agent that later
+    # learns why a design won has nowhere to record it.
+    assert ids[3:] == ["genesis", "bounds", "manual"]
+    assert "ask the people who built it" in data["currents"][3]["stages"][0]["body"]
     stage = data["currents"][1]["stages"][0]
     assert stage["id"] == "runtime.components"
     assert "Purpose: Locate the main executable components." in stage["body"]

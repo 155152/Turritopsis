@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turritopsis Onboarding"
+  short_description: "Route and maintain long-running project knowledge"
+  default_prompt: "Use $turritopsis-onboarding to orient in this project before making changes."

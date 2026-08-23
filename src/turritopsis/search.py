@@ -21,8 +21,41 @@ WEIGHTS = {
 }
 
 
+CJK = "一-鿿぀-ヿ가-힯"
+_HAS_CJK = re.compile(f"[{CJK}]")
+_SEGMENT = re.compile(f"[{CJK}]+|[^{CJK}\\s]+")
+# Chinese function words. A bigram made of two of these carries no signal.
+_CJK_STOP = set("的了是在和与及或吗呢吧啊怎什么样哪里有没做过要会能被把给对从到就都还也很更最这那些个之为以于而且但因所如果不")
+
+
+def _cjk_bigrams(segment: str) -> list[str]:
+    """Split a run of CJK characters into overlapping bigrams.
+
+    CJK text has no spaces, so whitespace tokenization leaves a whole question
+    as one term and nothing ever matches. Bigrams are the standard fallback
+    (same approach as Elasticsearch's CJK analyzer) and need no dictionary.
+    """
+    if len(segment) <= 2:
+        return [segment]
+    grams = [
+        gram
+        for index in range(len(segment) - 1)
+        if not ((gram := segment[index:index + 2])[0] in _CJK_STOP and gram[1] in _CJK_STOP)
+    ]
+    return grams or [segment]
+
+
 def _terms(query: str) -> list[str]:
-    return [item.lower() for item in re.split(r"\s+", query.strip()) if item]
+    terms: list[str] = []
+    for item in re.split(r"\s+", query.strip().lower()):
+        if not item:
+            continue
+        if not _HAS_CJK.search(item):
+            terms.append(item)
+            continue
+        for segment in _SEGMENT.findall(item):
+            terms.extend(_cjk_bigrams(segment) if _HAS_CJK.match(segment) else [segment])
+    return terms
 
 
 def _contains(term: str, text: str) -> bool:
@@ -51,9 +84,18 @@ def semantic_search(data: dict[str, Any], query: str, current_id: str = "", limi
         if current_id and current.get("id") != current_id:
             continue
         current_text = " ".join(str(current.get(key) or "") for key in ("id", "name", "blurb"))
+        current_haystack = current_text.lower()
         for stage in current.get("stages", []):
             body = str(stage.get("body") or "")
             if not body.strip():
+                continue
+            # Every scored field is drawn from body, the stage id/title, or the
+            # current. If none of them contain a term, the score is zero anyway —
+            # skip the metadata parse instead of paying for it on every stage.
+            haystack = "\n".join((
+                body, str(stage.get("id") or ""), str(stage.get("title") or ""), current_haystack,
+            )).lower()
+            if phrase not in haystack and not any(_contains(term, haystack) for term in terms):
                 continue
             meta = parse_metadata(body, stage)
             fields = {
