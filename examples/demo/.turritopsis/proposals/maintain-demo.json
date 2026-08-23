@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-08-24T08:00:00+00:00",
+  "canonical_modified": false,
+  "notice": "Potential drift only. Canonical content has not been modified.",
+  "possible_stale_stages": [
+    {
+      "stage_id": "anatomy.runtime",
+      "current": "anatomy",
+      "status": "current",
+      "verified": "2026-08-24 by demo",
+      "revision": "demo",
+      "reasons": [{"kind": "related_git_changes", "evidence": ["src/service.py"]}],
+      "review_required": true
+    }
+  ],
+  "patches": []
+}

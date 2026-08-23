@@ -1,0 +1,107 @@
+{
+  "title": "Your Project",
+  "subtitle": "Replace this placeholder with a short description of your project.",
+  "version": 1,
+  "currents": [
+    {
+      "id": "anatomy",
+      "name": "Anatomy",
+      "blurb": "What exists now",
+      "glyph": "◉",
+      "stages": [
+        {
+          "id": "anatomy.runtime",
+          "title": "Runtime",
+          "body": "# Runtime\n\nPurpose: Describe the current live runtime.\nSearch hints: runtime services processes deployment\nSummary: The application has one web service and one background worker.\nVerified: 2026-08-24 by demo\nStatus: current\nAuthority: runtime composition\n\n## Current facts\n\nThe web service accepts requests. The worker handles queued jobs."
+        },
+        {
+          "id": "anatomy.snapshot",
+          "title": "System Snapshot",
+          "status": "generated",
+          "generator": {"type": "path_exists", "path": ".turritopsis/stages.json"},
+          "body": "# System Snapshot\n\nStatus: generated\nSummary: Deterministic mechanical project facts.\n\n> auto-generated\n> manual edits will be overwritten\n\nLast refreshed from the project scanner."
+        }
+      ]
+    },
+    {
+      "id": "flow",
+      "name": "Flow",
+      "blurb": "How data and intent move",
+      "glyph": "≈",
+      "stages": [
+        {
+          "id": "flow.execution",
+          "title": "Execution path",
+          "body": "# Execution path\n\nSearch hints: request command queue result\nSummary: Requests are validated before asynchronous work begins.\nStatus: current\nAuthority: execution flow\n\n## Input → output\n\nRequest → validation → queued job → result."
+        }
+      ]
+    },
+    {
+      "id": "bounds",
+      "name": "Bounds",
+      "blurb": "What must not be broken",
+      "glyph": "△",
+      "stages": [
+        {
+          "id": "bounds.release",
+          "title": "Release gates",
+          "body": "# Release gates\n\n用途：记录发布前不可跳过的门。\n适合检索：release safety blocker privacy\n一句话概括：A release cannot proceed while critical tests are failing.\n最后核验：2026-08-23 by demo\n当前性：current\n权威范围：release gates, safety rules\n\n## Invariants\n\n- Never publish credentials or private paths.\n- Do not deploy while the smoke test is failing."
+        }
+      ]
+    },
+    {
+      "id": "manual",
+      "name": "Manual",
+      "blurb": "How to operate and recover it",
+      "glyph": "⌘",
+      "stages": [
+        {
+          "id": "manual.deploy",
+          "title": "Deploy",
+          "body": "# Deploy\n\nSearch hints: deploy restart verify rollback\nSummary: Build, install, then verify the health endpoint.\nStatus: current\nAuthority: operations\n\n## Procedure\n\n1. Build the package.\n2. Install the release.\n3. Verify the health endpoint."
+        }
+      ]
+    },
+    {
+      "id": "genesis",
+      "name": "Genesis",
+      "blurb": "Why it became this way",
+      "glyph": "✦",
+      "stages": [
+        {
+          "id": "genesis.timeline",
+          "title": "Timeline",
+          "body": "# Timeline\n\nSearch hints: history retired old path decisions\nSummary: A compact index of architectural turns.\nStatus: historical\nAuthority: historical sequence\n\n## 2026-08\n\nThe first stable service boundary was documented."
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "name": "Project",
+      "blurb": "Current long-running work",
+      "glyph": "◇",
+      "stages": [
+        {
+          "id": "project.overview",
+          "title": "Overview",
+          "body": "# Project overview\n\nSearch hints: project overview positioning\nSummary: This is placeholder content for a long-running project.\nStatus: current\nAuthority: project positioning\n\n## Core promise\n\nReplace this Stage with the durable promise of your project."
+        },
+        {
+          "id": "project.truth",
+          "title": "Live truth",
+          "body": "# Live truth\n\nSearch hints: live version release candidate path\nSummary: Version 0.1 is the current example validation surface.\nVerified: 2026-08-24 by demo\nStatus: current\nAuthority: live version, release state\n\n## Current facts\n\nThe example release is still under review."
+        },
+        {
+          "id": "project.handoff",
+          "title": "Current work and handoff",
+          "body": "# Current work and handoff\n\nPurpose: Tell the next contributor exactly where work stopped.\nSearch hints: handoff blocker next step current work release review\nSummary: The first workflow works; the next proof is a clean restart.\nVerified: 2026-08-24 by demo\nStatus: current\nAuthority: current work, next action\n\n## Current facts\n\nThe primary workflow passes its focused test.\n\n## Blocker\n\nThe restart smoke test has not been recorded.\n\n## Next steps\n\nRun the smoke test and record the result.\n\n## Invariants\n\nDo not widen the release scope before this proof passes. See `project.truth` and `bounds.release`."
+        },
+        {
+          "id": "project.safety",
+          "title": "Safety",
+          "body": "# Safety\n\nSearch hints: safety privacy release test gates\nSummary: Privacy and verified behavior are release gates.\nStatus: current\nAuthority: release gates, privacy boundary\n\n## Do not break\n\nCredentials remain outside canonical project knowledge."
+        }
+      ]
+    }
+  ]
+}

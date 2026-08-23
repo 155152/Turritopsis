@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "turritopsis"
+version = "0.1.0"
+description = "A shared handoff layer for long-running projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Turritopsis contributors"}]
+dependencies = [
+  "httpx>=0.27,<1",
+  "mcp>=1.12,<2",
+  "uvicorn>=0.30,<1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+turritopsis = "turritopsis.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/turritopsis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

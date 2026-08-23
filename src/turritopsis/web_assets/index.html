@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Turritopsis — Project Map</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to content</a>
+  <header class="masthead">
+    <button class="brand" data-route="map" aria-label="Open project map">
+      <svg class="ui-icon brand-icon" aria-hidden="true"><use href="#zodiac-aquarius"></use></svg>
+      <span><b>Turritopsis</b><small>PROJECT KNOWLEDGE</small></span>
+    </button>
+    <form id="global-search" class="search-bar" role="search">
+      <svg class="ui-icon search-icon" aria-hidden="true"><use href="#search"></use></svg>
+      <input id="search-input" type="search" autocomplete="off" placeholder="Search truth, paths, decisions…" aria-label="Search project knowledge">
+      <kbd id="search-shortcut">Ctrl K</kbd>
+      <button class="search-submit" type="submit" aria-label="Run search"><svg class="ui-icon" aria-hidden="true"><use href="#search"></use></svg></button>
+    </form>
+    <div class="revision-pill"><span class="pulse-dot"></span><span id="revision-label">Loading map…</span></div>
+  </header>
+
+  <aside class="rail" aria-label="Primary navigation">
+    <nav>
+      <button class="nav-item active" data-route="map"><svg class="ui-icon" aria-hidden="true"><use href="#map"></use></svg><b>Map</b></button>
+      <button class="nav-item" data-route="authority"><svg class="ui-icon" aria-hidden="true"><use href="#gavel"></use></svg><b>Authority</b></button>
+      <button class="nav-item" data-route="proposals"><svg class="ui-icon" aria-hidden="true"><use href="#list-check"></use></svg><b>Proposals</b><em id="proposal-badge" hidden>0</em></button>
+      <button class="nav-item" data-route="history"><svg class="ui-icon" aria-hidden="true"><use href="#timeline"></use></svg><b>History</b></button>
+    </nav>
+    <div class="rail-note"><span>LOCAL</span><p>One canonical knowledge surface.</p></div>
+  </aside>
+
+  <main id="workspace" tabindex="-1">
+    <div id="view" class="view-shell" aria-live="polite"></div>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="modal"><div id="modal-body"></div></dialog>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
