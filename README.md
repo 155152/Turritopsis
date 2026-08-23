@@ -2,7 +2,9 @@
 
 **A shared handoff layer for long-running projects.**
 
-> Agents come and go. Projects shouldn’t forget.
+**1 human + 4 agents. 71 days. 500K lines of active code.**
+
+> Agents come and go. Projects shouldn't forget.
 
 Your coding agent can read the code. Turritopsis tells it:
 
@@ -20,6 +22,20 @@ get_stage("project.handoff")
 ```
 
 Turritopsis is not private agent memory, code indexing, session continuation, a project wiki, or chunked RAG. It is a small, Git-friendly address space for project knowledge that code and Git cannot reliably reconstruct.
+
+## One MCP, many agents: a field-tested workflow
+
+Turritopsis grew out of one human running a real long-term system with four different agents across chat, coding, local, and VPS workspaces. They did not share a private memory or a continuous session. They shared one project map through one MCP.
+
+**Chat windows were for thinking.** ChatGPT and Claude could keep long-context brainstorming, product decisions, and difficult design conversations in the conversational surface where they belonged. Their context and token budgets were spent on reasoning instead of repeatedly reconstructing the repository.
+
+**Coding windows were for execution.** A clean coding agent could arrive, call `list_stages`, `search_stages`, and `get_stage`, and take over in seconds. It did not need its own agent-memory system, a replay of old conversations, or a newly written handoff document. Clean windows stayed clean without losing engineering progress.
+
+**A cheaper model handled routine maintenance.** It could inspect recent diffs and stale verification dates, refresh evidence-backed knowledge, and leave uncertain facts unresolved. Expensive models were reserved for decisions that deserved them.
+
+**The human edited direction, not bookkeeping.** The Web UI provided a project map, Stage editor, live Markdown preview, revision conflicts, proposals, and history. The human corrected priorities, boundaries, and project meaning while agents maintained implementation detail from traceable evidence.
+
+The practical result was continuity without forcing every agent to become the memory system. Agents could disappear, sessions could end, and a new coding window could still find the current truth and continue the work.
 
 ## Install and start
 
