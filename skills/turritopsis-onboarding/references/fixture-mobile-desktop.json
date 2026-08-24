@@ -1,6 +1,6 @@
 {
   "title": "Fictional Electron Notes App",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "client", "name": "Client lifecycle", "blurb": "Navigation, state, offline, and sync", "stages": [
       {"id": "client.state", "title": "Who owns note state online and offline", "type": "architecture", "freshness": "steady", "purpose": "Explain renderer/main-process boundaries and state ownership.", "search_hints": "electron state owner renderer main offline cache", "authority": "Client state ownership; excludes sync protocol details.", "evidence_paths": ["src/main/store.ts", "src/renderer/state.ts"], "update_triggers": ["Process boundaries or state ownership change"]},

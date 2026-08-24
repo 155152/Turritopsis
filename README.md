@@ -152,9 +152,29 @@ turritopsis scan
 turritopsis apply-skeleton skeleton.json
 ```
 
+After `get_stage` returns the current revision, a CLI-only Agent can fill or amend
+the Stage without importing Turritopsis internals:
+
+```bash
+turritopsis update-stage project.handoff \
+  --body-file handoff.md \
+  --expected-revision CURRENT_BODY_HASH \
+  --actor codex \
+  --mode replace
+```
+
+A stale revision exits non-zero and prints the current revision; it never silently
+overwrites the newer body.
+
 `turritopsis init --scan` is a compatibility alias for the first command. It reads a bounded project tree, README files, manifests, CI/configuration documents, and other non-sensitive text materials, then writes `scan-evidence.json`, `scan-anomalies.json`, and `scan-run.json`. It uses no model, network, provider, or API key. Re-running `scan` resumes from the saved evidence unless `--refresh` is explicit, so an interrupted Agent never has to pay the scan cost again.
 
 The installed Agent—not a second external LLM—classifies that evidence. `apply-skeleton` validates schema, provenance, Current and Stage ids, evidence paths, Stage type/freshness, empty responsibilities, duplicate Authority, garbage drawers, and fragmentation before atomically creating `stages.json`. It never overwrites an existing knowledge base; later writes must use revision-protected `update_stage`. Canonical knowledge still starts as explicit placeholders and must be filled from verified evidence.
+
+`classification.agent_self_reported` records only the classifier's own free-text
+label. It is useful for debugging but is not trustworthy provider/model provenance.
+The scanner reports every tree, material, or structure budget truncation in
+`scan-run.json.warnings`. It also records a 14-Stage files-per-Stage estimate so a
+large repository is visibly identified as map-only before Stage writing begins.
 
 Optional LLM-backed maintenance uses `.turritopsis/config.json`; scanning and skeleton application never read it:
 

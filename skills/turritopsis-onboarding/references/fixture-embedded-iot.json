@@ -1,6 +1,6 @@
 {
   "title": "Fictional ESP32 Climate Sensor",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "device", "name": "Device behavior", "blurb": "Hardware, firmware, timing, and protocol", "stages": [
       {"id": "device.topology", "title": "How the sensor, MCU, power rail, and radio connect", "type": "architecture", "freshness": "steady", "purpose": "Own physical and firmware component responsibility.", "search_hints": "esp32 dht22 wiring gpio power radio topology", "authority": "Device topology and responsibility; excludes flashing steps.", "evidence_paths": ["hardware/schematic.pdf", "firmware/pins.h"], "update_triggers": ["Board revision, pin assignment, or component changes"]},

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from turritopsis.scan_run import run_local_scan
+from turritopsis.scan_run import _capacity_estimate, run_local_scan
 from turritopsis.skeletons import apply_skeleton, validate_skeleton
 
 
@@ -30,7 +30,7 @@ def _skeleton(**stage_changes):
     stage.update(stage_changes)
     return {
         "classification_provenance": {
-            "source": "installed-agent", "agent": "codex", "created_at": "2026-08-24T00:00:00Z"
+            "source": "installed-agent", "agent_self_reported": "codex", "created_at": "2026-08-24T00:00:00Z"
         },
         "currents": [{
             "id": "orders", "name": "Order lifecycle", "blurb": "How orders move",
@@ -63,6 +63,52 @@ def test_scan_run_records_local_agent_provenance_and_coverage(tmp_path):
     assert run["classification_source"] == "pending-installed-agent"
     assert run["coverage"]["tree_files"] >= 2
     assert len(run["evidence_sha256"]) == 64
+    assert run["stage_capacity_estimate"]["typical_stage_count"] == 14
+    assert "预计每个 Stage" in result["capacity_hint"]
+
+
+def test_scan_warns_when_file_tree_is_truncated(tmp_path, monkeypatch):
+    for index in range(5):
+        (tmp_path / f"file-{index}.py").write_text(
+            f"def function_{index}():\n    return {index}\n", encoding="utf-8"
+        )
+    monkeypatch.setattr("turritopsis.init_scan.MAX_TREE_FILES", 3)
+    result = run_local_scan(tmp_path)
+    run = json.loads(Path(result["scan_run"]).read_text(encoding="utf-8"))
+    assert run["coverage"]["tree_files"] == 3
+    assert any(
+        "omitted 2 eligible files" in warning
+        and "3-file limit" in warning
+        and "lexicographic path order" in warning
+        for warning in run["warnings"]
+    )
+
+
+def test_scan_warns_for_material_and_structure_budgets(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "README.md").write_text("R" * 100, encoding="utf-8")
+    (tmp_path / "docs" / "design.md").write_text("D" * 100, encoding="utf-8")
+    (tmp_path / "service.py").write_text(
+        "def start_service(configuration):\n    return configuration\n", encoding="utf-8"
+    )
+    monkeypatch.setattr("turritopsis.init_scan.MAX_MATERIALS", 1)
+    monkeypatch.setattr("turritopsis.init_scan.MAX_FILE_CHARS", 10)
+    monkeypatch.setattr("turritopsis.init_scan.MAX_TOTAL_CHARS", 10)
+    result = run_local_scan(tmp_path)
+    run = json.loads(Path(result["scan_run"]).read_text(encoding="utf-8"))
+    assert any("Material evidence truncated" in warning for warning in run["warnings"])
+    assert any("Material contents truncated" in warning for warning in run["warnings"])
+    assert any("Structure map truncated" in warning for warning in run["warnings"])
+
+
+def test_large_project_capacity_hint_uses_approximately_150_files_per_stage():
+    estimate = _capacity_estimate({"structure_coverage": {"code_files_found": 2122}})
+    assert estimate == {
+        "code_files_found": 2122,
+        "typical_stage_count": 14,
+        "estimated_files_per_stage": 150,
+        "guidance": "<=5 detail-rich; 10-30 comfortable; >=100 map-only",
+    }
 
 
 @pytest.mark.parametrize("changes, message", [
@@ -102,6 +148,7 @@ def test_apply_updates_scan_run_after_atomic_stage_creation(tmp_path):
     run = json.loads((tmp_path / ".turritopsis" / "scan-run.json").read_text(encoding="utf-8"))
     assert run["state"] == "skeleton_applied"
     assert run["classification_source"] == "installed-agent"
+    assert run["classification_agent_self_reported"] == "codex"
     with pytest.raises(FileExistsError, match="never overwrites"):
         apply_skeleton(tmp_path, skeleton)
 

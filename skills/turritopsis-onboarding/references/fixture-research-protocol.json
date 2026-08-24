@@ -1,6 +1,6 @@
 {
   "title": "Fictional Open Container Format",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "specification", "name": "Normative format", "blurb": "Terminology, wire contract, and conformance", "stages": [
       {"id": "specification.terms", "title": "What container, segment, and record mean", "type": "domain", "freshness": "steady", "purpose": "Own normative terminology and concept boundaries.", "search_hints": "container segment record terminology definition", "authority": "Protocol terminology; excludes implementation advice.", "evidence_paths": ["spec/terminology.md"], "update_triggers": ["Normative definitions change"]},

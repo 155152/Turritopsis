@@ -1,6 +1,6 @@
 {
   "title": "Fictional Recommender Pipeline",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "training", "name": "Training evidence", "blurb": "Lineage, features, and evaluation", "stages": [
       {"id": "training.lineage", "title": "Where training rows and labels come from", "type": "data", "freshness": "volatile", "purpose": "Own source lineage, joins, retention, and leakage boundaries.", "search_hints": "training data label lineage leakage retention", "authority": "Training dataset lineage; excludes model metrics.", "evidence_paths": ["pipelines/build_dataset.py", "docs/data-card.md"], "update_triggers": ["Sources, joins, labels, or retention change"]},

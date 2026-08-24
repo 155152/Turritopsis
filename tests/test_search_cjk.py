@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from turritopsis.api import Turritopsis
-from turritopsis.search import _terms
+from turritopsis.search import _terms, semantic_search
 
 
 @pytest.fixture
@@ -72,6 +72,33 @@ def test_cjk_query_is_split_into_bigrams():
 def test_ascii_tokenization_is_unchanged():
     assert _terms("nginx config") == ["nginx", "config"]
     assert _terms("  MCP  Tools ") == ["mcp", "tools"]
+
+
+def test_english_stop_words_do_not_outscore_configuration_terms():
+    data = {
+        "currents": [{
+            "id": "project", "name": "Project", "blurb": "Shared project map",
+            "stages": [
+                {
+                    "id": "project.orientation",
+                    "title": "The project and where it is",
+                    "body": "# The project and where it is\n\nSummary: The project as it is.\n",
+                },
+                {
+                    "id": "surface.cli_contract",
+                    "title": "CLI contract",
+                    "body": (
+                        "# CLI contract\n\n"
+                        "Search hints: required configuration defaults defined\n"
+                        "Summary: Command configuration and defaults.\n"
+                    ),
+                },
+            ],
+        }],
+    }
+    query = "required configuration and where defaults are defined"
+    assert _terms(query) == ["required", "configuration", "defaults", "defined"]
+    assert semantic_search(data, query)[0]["stage_id"] == "surface.cli_contract"
 
 
 def test_mixed_script_query_keeps_ascii_terms_whole():

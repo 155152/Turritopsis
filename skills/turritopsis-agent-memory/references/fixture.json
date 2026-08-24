@@ -1,6 +1,6 @@
 {
   "title": "Fictional Harbor Memory",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "knowledge", "name": "Accepted knowledge", "blurb": "How observations become correctable shared memory", "stages": [
       {"id": "knowledge.authority", "title": "Which memory layer is allowed to claim truth", "type": "authority", "freshness": "steady", "purpose": "Resolve conflicts among source evidence, accepted knowledge, summaries, and indexes.", "search_hints": "memory truth source evidence summary index conflict correction", "authority": "Memory-layer precedence and provenance; excludes retrieval ranking details.", "evidence_paths": ["docs/memory-model.md", "src/store/schema.sql"], "update_triggers": ["A memory layer or conflict rule changes"]},

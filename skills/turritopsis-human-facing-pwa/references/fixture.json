@@ -1,6 +1,6 @@
 {
   "title": "Fictional Lumen Chat PWA",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "conversation", "name": "Human conversation surface", "blurb": "What the person sees and how actions complete", "stages": [
       {"id": "conversation.message_flow", "title": "How a message moves from composer to durable conversation", "type": "flow", "freshness": "steady", "purpose": "Trace submit, optimistic state, persistence, acknowledgement, and retry.", "search_hints": "send message pending retry duplicate durable conversation", "authority": "End-to-end message submission lifecycle; excludes bubble styling.", "evidence_paths": ["web/src/send.ts", "server/routes/messages.py"], "update_triggers": ["Submission, acknowledgement, or retry behavior changes"]},

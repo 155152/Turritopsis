@@ -1,6 +1,6 @@
 {
   "title": "Fictional Mira Personal Assistant",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "relationship", "name": "Human-assistant relationship", "blurb": "Role, authority, privacy, and durable understanding", "stages": [
       {"id": "relationship.role", "title": "What Mira is allowed to be for its human", "type": "orientation", "freshness": "steady", "purpose": "Define the assistant relationship, intended value, channels, and non-role.", "search_hints": "assistant role relationship purpose human channel not allowed", "authority": "Mira's human-facing role and scope; excludes tool-specific permission.", "evidence_paths": ["docs/product-intent.md", "docs/relationship-contract.md"], "update_triggers": ["Product role, supported human, or channel scope changes"]},

@@ -417,12 +417,19 @@ def _sediment_digest(root: Path) -> dict[str, Any]:
 def scan_project(root: Path) -> dict[str, Any]:
     """Collect bounded, reviewable project evidence for LLM classification."""
     root = root.resolve()
-    files = []
+    eligible_files = []
     for path in sorted(root.rglob("*")):
-        if len(files) >= MAX_TREE_FILES:
-            break
         if path.is_file() and _safe_file(path, root):
-            files.append(path)
+            eligible_files.append(path)
+    files = eligible_files[:MAX_TREE_FILES]
+    scan_warnings: list[str] = []
+    tree_omitted = len(eligible_files) - len(files)
+    if tree_omitted:
+        scan_warnings.append(
+            f"File tree truncated: omitted {tree_omitted} eligible files after the "
+            f"{MAX_TREE_FILES}-file limit; retained the first {MAX_TREE_FILES} files in "
+            "lexicographic path order after safety and archaeology exclusions."
+        )
     tree = [path.relative_to(root).as_posix() for path in files]
     candidates, imports = _rank_materials(files, root)
     # Prose is read in full within its role's budget: a README argues, and an
@@ -438,15 +445,19 @@ def scan_project(root: Path) -> dict[str, Any]:
     materials: list[dict[str, str]] = []
     spent = {role: 0 for role in ROLE_BUDGETS}
     taken: set[Path] = set()
+    truncated_materials: set[Path] = set()
 
     def _take(path: Path, role: str, allowance: int) -> None:
         try:
-            content = path.read_text(encoding="utf-8", errors="replace")[:MAX_FILE_CHARS]
+            raw_content = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             return
+        content = raw_content[:MAX_FILE_CHARS]
         if not content.strip() or looks_like_credential(content):
             taken.add(path)
             return
+        if len(raw_content) > MAX_FILE_CHARS or len(content) > allowance:
+            truncated_materials.add(path)
         content = content[:allowance]
         materials.append({"role": role, "path": path.relative_to(root).as_posix(), "content": content})
         spent[role] += len(content)
@@ -465,10 +476,31 @@ def scan_project(root: Path) -> dict[str, Any]:
             break
         if path not in taken:
             _take(path, role, remaining)
+    material_omitted = sum(1 for path, _role in prose if path not in taken)
+    if material_omitted:
+        scan_warnings.append(
+            f"Material evidence truncated: omitted {material_omitted} ranked prose/data "
+            f"candidates after the {MAX_MATERIALS}-file and {MAX_PROSE_CHARS}-character "
+            "limits; retained role-budgeted README, manifest, CI, and documentation "
+            "materials in ranked order."
+        )
+    if truncated_materials:
+        scan_warnings.append(
+            f"Material contents truncated: retained leading text only for "
+            f"{len(truncated_materials)} included files that exceeded the "
+            f"{MAX_FILE_CHARS}-character per-file limit or remaining role/shared budget."
+        )
 
     ranked = [(path, path.relative_to(root).as_posix(), imports.get(path, 0))
               for path in candidates if path.suffix.lower() in CODE_SUFFIXES]
     outline, coverage = structure_map(ranked, MAX_TOTAL_CHARS - sum(spent.values()))
+    if coverage.get("files_skipped", 0):
+        scan_warnings.append(
+            f"Structure map truncated: omitted {coverage['files_skipped']} source cards "
+            f"that did not fit the {MAX_TOTAL_CHARS - sum(spent.values())}-character "
+            "structure budget; retained ranked declaration cards in project-area and "
+            "dependency order."
+        )
     return {
         "root_name": root.name,
         "tree": tree,
@@ -476,6 +508,7 @@ def scan_project(root: Path) -> dict[str, Any]:
         "materials": materials,
         "structure_map": outline,
         "structure_coverage": {**coverage, "code_files_found": len(ranked)},
+        "scan_warnings": scan_warnings,
         "sediment": _sediment_digest(root),
     }
 

@@ -10,6 +10,7 @@ from turritopsis.config import LLMConfig, load_llm_config
 from turritopsis.exporter import export_project
 from turritopsis.generators import refresh_generated
 from turritopsis.maintain import maintain_stages
+from turritopsis.revisions import revision
 
 
 class MaintenanceLLM:
@@ -81,7 +82,7 @@ def test_agent_skeleton_is_validated_and_applied(tmp_path):
     skeleton.write_text(json.dumps({
         "title": "Shop",
         "classification_provenance": {
-            "source": "installed-agent", "agent": "codex", "created_at": "2026-08-24T00:00:00Z"
+            "source": "installed-agent", "agent_self_reported": "codex", "created_at": "2026-08-24T00:00:00Z"
         },
         "currents": [{
             "id": "orders", "name": "Order lifecycle", "blurb": "How orders move",
@@ -98,10 +99,40 @@ def test_agent_skeleton_is_validated_and_applied(tmp_path):
     }), encoding="utf-8")
     assert main(["apply-skeleton", str(skeleton), str(tmp_path)]) == 0
     data = json.loads((tmp_path / ".turritopsis" / "stages.json").read_text(encoding="utf-8"))
+    assert data["classification"]["agent_self_reported"] == "codex"
+    assert "agent" not in data["classification"]
     body = data["currents"][0]["stages"][0]["body"]
     assert "Type: flow" in body
     assert "Freshness: steady" in body
     assert "## Update triggers" in body
+
+
+def test_update_stage_cli_writes_body_and_rejects_stale_revision(data_path, tmp_path, capsys):
+    document = json.loads(data_path.read_text(encoding="utf-8"))
+    original = document["currents"][0]["stages"][0]["body"]
+    original_revision = revision(original)
+    body_file = tmp_path / "handoff.md"
+    body_file.write_text("# Updated handoff\n\nCurrent work is verified.\n", encoding="utf-8")
+
+    assert main([
+        "update-stage", "project.handoff", "--data", str(data_path),
+        "--body-file", str(body_file), "--expected-revision", original_revision,
+        "--actor", "cold-start-agent",
+    ]) == 0
+    updated = json.loads(data_path.read_text(encoding="utf-8"))
+    assert updated["currents"][0]["stages"][0]["body"] == body_file.read_text(encoding="utf-8")
+
+    body_file.write_text("# Silent overwrite must not happen\n", encoding="utf-8")
+    assert main([
+        "update-stage", "project.handoff", "--data", str(data_path),
+        "--body-file", str(body_file), "--expected-revision", original_revision,
+        "--actor", "cold-start-agent",
+    ]) == 3
+    error = capsys.readouterr().err
+    current_body = updated["currents"][0]["stages"][0]["body"]
+    assert f"current revision {revision(current_body)}" in error
+    after_conflict = json.loads(data_path.read_text(encoding="utf-8"))
+    assert after_conflict["currents"][0]["stages"][0]["body"] == current_body
 
 
 def test_maintain_updates_stale_stage_from_traceable_evidence(tmp_path):

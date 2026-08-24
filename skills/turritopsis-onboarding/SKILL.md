@@ -14,7 +14,7 @@ Use the installed Agent as the classifier and writer. Keep scanning local and de
 3. Read [stage-types.md](references/stage-types.md). Select one responsibility for each Stage.
 4. Read [project-suites.md](references/project-suites.md). Choose the smallest suitable suite; combine suites for hybrids.
 5. Inspect only the evidence needed to classify durable knowledge regions. Do not generate one Stage per file, directory, or document.
-6. Write `skeleton.json` with `classification_provenance.source: installed-agent`, the current Agent name, and an ISO-8601 timestamp.
+6. Write `skeleton.json` with `classification_provenance.source: installed-agent`, `agent_self_reported`, and an ISO-8601 timestamp. The Agent name is self-reported free text for debugging only; never use it as provider/model identity or trustworthy provenance.
 7. Run `turritopsis apply-skeleton skeleton.json`. Fix every validation error instead of bypassing it.
 8. Fill Stage bodies from repository evidence through `update_stage` with revision protection.
 

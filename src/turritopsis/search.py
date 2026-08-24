@@ -26,6 +26,16 @@ _HAS_CJK = re.compile(f"[{CJK}]")
 _SEGMENT = re.compile(f"[{CJK}]+|[^{CJK}\\s]+")
 # Chinese function words. A bigram made of two of these carries no signal.
 _CJK_STOP = set("的了是在和与及或吗呢吧啊怎什么样哪里有没做过要会能被把给对从到就都还也很更最这那些个之为以于而且但因所如果不")
+_ENGLISH_STOP = {
+    "a", "an", "and", "are", "as", "at", "be", "been", "being", "but", "by",
+    "can", "could", "did", "do", "does", "doing", "for", "from", "had", "has",
+    "have", "having", "how", "if", "in", "into", "is", "it", "its", "may",
+    "might", "must", "no", "nor", "not", "of", "on", "or", "our", "should",
+    "so", "than", "that", "the", "their", "then", "there", "these", "they",
+    "this", "those", "through", "to", "under", "was", "were", "what", "when",
+    "where", "which", "while", "who", "why", "will", "with", "would", "you",
+    "your",
+}
 
 
 def _cjk_bigrams(segment: str) -> list[str]:
@@ -51,7 +61,8 @@ def _terms(query: str) -> list[str]:
         if not item:
             continue
         if not _HAS_CJK.search(item):
-            terms.append(item)
+            if item not in _ENGLISH_STOP:
+                terms.append(item)
             continue
         for segment in _SEGMENT.findall(item):
             terms.extend(_cjk_bigrams(segment) if _HAS_CJK.match(segment) else [segment])
@@ -77,8 +88,11 @@ def semantic_search(data: dict[str, Any], query: str, current_id: str = "", limi
     query = query.strip()
     if not query:
         raise ValueError("query must not be empty")
-    phrase = query.lower()
     terms = _terms(query)
+    ascii_items = [item for item in re.split(r"\s+", query.lower()) if not _HAS_CJK.search(item)]
+    # An exact natural-language phrase must not smuggle stop words back into the
+    # score after term filtering. Keep the phrase bonus only for signal-only queries.
+    phrase = "" if any(item in _ENGLISH_STOP for item in ascii_items) else query.lower()
     rows = []
     for current in data.get("currents", []):
         if current_id and current.get("id") != current_id:

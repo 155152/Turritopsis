@@ -16,7 +16,7 @@ from .scheduler import install_schedule, remove_schedule, show_schedule
 from .scan_run import run_local_scan
 from .server import serve
 from .skeletons import apply_skeleton
-from .store import Store
+from .store import RevisionConflict, Store
 
 
 SKELETON = [
@@ -176,6 +176,20 @@ def cmd_survey(args) -> int:
     return 0
 
 
+def cmd_update_stage(args) -> int:
+    body_path = Path(args.body_file).expanduser().resolve()
+    body = body_path.read_text(encoding="utf-8")
+    result = Store(resolve_data(args.data)).update_stage(
+        args.stage_id,
+        body,
+        mode=args.mode,
+        expected_revision=args.expected_revision,
+        actor=args.actor,
+    )
+    _print(result)
+    return 0
+
+
 def cmd_scan(args) -> int:
     _print(run_local_scan(
         Path(args.directory), refresh=args.refresh, agent=args.agent or "installed-agent"
@@ -241,6 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
     add = sub.add_parser("add", help="Add an empty Stage")
     add.add_argument("current_id"); add.add_argument("stage_id"); add.add_argument("title"); add.add_argument("--data")
     add.set_defaults(func=cmd_add)
+    update = sub.add_parser("update-stage", help="Replace or append a Stage body with revision protection")
+    update.add_argument("stage_id")
+    update.add_argument("--body-file", required=True, help="UTF-8 file containing the Stage body")
+    update.add_argument("--expected-revision", required=True, help="Revision returned by get_stage")
+    update.add_argument("--actor", required=True)
+    update.add_argument("--mode", choices=("replace", "append"), default="replace")
+    update.add_argument("--data")
+    update.set_defaults(func=cmd_update_stage)
     current = sub.add_parser("add-current", help="Add a Current")
     current.add_argument("current_id"); current.add_argument("name"); current.add_argument("--glyph"); current.add_argument("--blurb"); current.add_argument("--data")
     current.set_defaults(func=cmd_add_current)
@@ -272,6 +294,13 @@ def main(argv=None) -> int:
     try:
         args = build_parser().parse_args(argv)
         return int(args.func(args) or 0)
+    except RevisionConflict as error:
+        print(
+            f"error: revision conflict: requested {error.requested}, "
+            f"current revision {error.current}",
+            file=sys.stderr,
+        )
+        return 3
     except (FileNotFoundError, FileExistsError, KeyError, ValueError, LLMError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

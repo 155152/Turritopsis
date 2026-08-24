@@ -65,9 +65,15 @@ def validate_skeleton(
     provenance = document.get("classification_provenance")
     if not isinstance(provenance, dict):
         raise ValueError("classification_provenance must be an object")
-    _reject_extra(provenance, {"source", "agent", "created_at", "notes"}, "classification_provenance")
+    _reject_extra(
+        provenance,
+        {"source", "agent_self_reported", "created_at", "notes"},
+        "classification_provenance",
+    )
     source = _required_text(provenance, "source", "classification_provenance")
-    agent = _required_text(provenance, "agent", "classification_provenance")
+    agent_self_reported = _required_text(
+        provenance, "agent_self_reported", "classification_provenance"
+    )
     created_at = _required_text(provenance, "created_at", "classification_provenance")
     currents = document.get("currents")
     if not isinstance(currents, list) or not currents:
@@ -171,7 +177,11 @@ def validate_skeleton(
         "title": str(document.get("title") or evidence.get("root_name") or "Project"),
         "subtitle": str(document.get("subtitle") or "Shared project truth"),
         "version": 1,
-        "classification": {"source": source, "agent": agent, "created_at": created_at},
+        "classification": {
+            "source": source,
+            "agent_self_reported": agent_self_reported,
+            "created_at": created_at,
+        },
         "currents": canonical_currents,
     }
     return data, {"currents": len(currents), "stages": stage_count, "warnings": warnings}
@@ -201,7 +211,7 @@ def apply_skeleton(root: Path, skeleton_path: Path) -> dict[str, Any]:
         run.update({
             "state": "skeleton_applied",
             "classification_source": data["classification"]["source"],
-            "classification_agent": data["classification"]["agent"],
+            "classification_agent_self_reported": data["classification"]["agent_self_reported"],
             "skeleton_sha256": sha256_document(document),
         })
         write_json_atomic(run_path, run)

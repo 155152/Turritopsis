@@ -1,6 +1,6 @@
 {
   "title": "Fictional RelayNest Agent Runtime",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "body", "name": "Live Agent body", "blurb": "Authority, topology, and protected continuity", "stages": [
       {"id": "body.authority", "title": "Which live surfaces prove RelayNest's current state", "type": "authority", "freshness": "volatile", "purpose": "Resolve conflicts among live state, config, deployments, mirrors, and snapshots.", "search_hints": "live truth active session config mirror snapshot conflict", "authority": "Runtime truth-source precedence; excludes recovery procedure.", "evidence_paths": ["docs/runtime-authority.md", "src/status.py"], "update_triggers": ["Deployment, state store, or status production changes"]},

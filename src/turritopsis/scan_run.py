@@ -13,6 +13,7 @@ from .init_scan import scan_anomalies, scan_project
 
 
 SCHEMA_VERSION = "2"
+TYPICAL_STAGE_COUNT = 14
 
 
 def _now() -> str:
@@ -51,6 +52,28 @@ def write_json_atomic(path: Path, document: Any) -> None:
             os.unlink(temporary)
 
 
+def _capacity_estimate(evidence: dict[str, Any]) -> dict[str, Any]:
+    code_files = int(evidence.get("structure_coverage", {}).get("code_files_found", 0))
+    raw = code_files / TYPICAL_STAGE_COUNT
+    files_per_stage = (
+        int(round(raw / 10.0) * 10) if raw >= 100 else max(1, int(round(raw)))
+    ) if code_files else 0
+    return {
+        "code_files_found": code_files,
+        "typical_stage_count": TYPICAL_STAGE_COUNT,
+        "estimated_files_per_stage": files_per_stage,
+        "guidance": "<=5 detail-rich; 10-30 comfortable; >=100 map-only",
+    }
+
+
+def _capacity_hint(estimate: dict[str, Any]) -> str:
+    return (
+        f"{estimate['code_files_found']} code files · "
+        f"预计每个 Stage 需覆盖约 {estimate['estimated_files_per_stage']} 个文件\n"
+        "参考：≤5 细节充分 · 10–30 舒适 · ≥100 仅能给出地图"
+    )
+
+
 def run_local_scan(
     root: Path,
     *,
@@ -67,6 +90,11 @@ def run_local_scan(
     if evidence_path.is_file() and run_path.is_file() and not refresh:
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         run = json.loads(run_path.read_text(encoding="utf-8"))
+        capacity = run.get("stage_capacity_estimate") or _capacity_estimate(evidence)
+        if "stage_capacity_estimate" not in run:
+            run["stage_capacity_estimate"] = capacity
+            run["warnings"] = list(evidence.get("scan_warnings", run.get("warnings", [])))
+            write_json_atomic(run_path, run)
         return {
             "resumed": True,
             "state": run.get("state", "evidence_ready"),
@@ -74,6 +102,7 @@ def run_local_scan(
             "anomalies": str(anomalies_path) if anomalies_path.is_file() else None,
             "scan_run": str(run_path),
             "evidence_sha256": sha256_document(evidence),
+            "capacity_hint": _capacity_hint(capacity),
             "next": "Have the installed Agent classify scan-evidence.json, then run turritopsis apply-skeleton skeleton.json",
         }
 
@@ -104,6 +133,7 @@ def run_local_scan(
         ),
         "structure": evidence.get("structure_coverage", {}),
     }
+    capacity = _capacity_estimate(evidence)
     run = {
         "scanner_version": _scanner_version(),
         "schema_version": SCHEMA_VERSION,
@@ -114,8 +144,9 @@ def run_local_scan(
         "state": "evidence_ready",
         "evidence_sha256": sha256_document(evidence),
         "coverage": coverage,
+        "stage_capacity_estimate": capacity,
         "classification_source": "pending-installed-agent",
-        "warnings": [],
+        "warnings": list(evidence.get("scan_warnings", [])),
     }
     write_json_atomic(run_path, run)
     return {
@@ -125,5 +156,6 @@ def run_local_scan(
         "anomalies": str(anomalies_path),
         "scan_run": str(run_path),
         "evidence_sha256": run["evidence_sha256"],
+        "capacity_hint": _capacity_hint(capacity),
         "next": "Have the installed Agent classify scan-evidence.json, then run turritopsis apply-skeleton skeleton.json",
     }

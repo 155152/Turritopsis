@@ -1,6 +1,6 @@
 {
   "title": "Fictional Cart Service",
-  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "classification_provenance": {"source": "example", "agent_self_reported": "documentation", "created_at": "2026-08-24T00:00:00Z"},
   "currents": [
     {"id": "orders", "name": "Order lifecycle", "blurb": "Order meaning, movement, and persistence", "stages": [
       {"id": "orders.model", "title": "What an order means and which states are terminal", "type": "domain", "freshness": "steady", "purpose": "Define order entities and state rules.", "search_hints": "order status terminal cancellation shipment", "authority": "Order terminology and state invariants; excludes deployment.", "evidence_paths": ["docs/order-model.md"], "update_triggers": ["Order states or business rules change"]},
