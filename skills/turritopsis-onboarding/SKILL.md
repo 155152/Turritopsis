@@ -14,9 +14,9 @@ Use the installed Agent as the classifier and writer. Keep scanning local and de
 3. Read [stage-types.md](references/stage-types.md). Select one responsibility for each Stage.
 4. Read [project-suites.md](references/project-suites.md). Choose the smallest suitable suite; combine suites for hybrids.
 5. Inspect only the evidence needed to classify durable knowledge regions. Do not generate one Stage per file, directory, or document.
-6. Write `skeleton.json` with `classification_provenance.source: installed-agent`, `agent_self_reported`, and an ISO-8601 timestamp. The Agent name is self-reported free text for debugging only; never use it as provider/model identity or trustworthy provenance.
+6. Read [cli-contract.md](references/cli-contract.md), then write `skeleton.json` from that public contract. Never inspect installed package source to discover fields, revisions, or write calls.
 7. Run `turritopsis apply-skeleton skeleton.json`. Fix every validation error instead of bypassing it.
-8. Fill Stage bodies from repository evidence through `update_stage` with revision protection.
+8. Run `turritopsis get-stage --all`, write the Stage body files and one batch manifest, then use `turritopsis update-stages --manifest updates.json --actor <name>`.
 
 Use [paired-examples.md](references/paired-examples.md) when a Stage is structurally valid but vague. Use the seven fixtures when selecting a suite:
 
@@ -48,5 +48,5 @@ Fixtures are examples, not templates. Replace their fictional evidence paths and
 2. Treat verified Stages as routing context, not as a replacement for live evidence.
 3. Treat anomaly output as leads requiring confirmation, never canonical truth.
 4. Ask a person only for an unresolved judgement the repository and supplied materials cannot answer.
-5. Use `update_stage` with the current revision, a named actor, and the smallest complete body change.
+5. For one change use `update-stage`; for several use the atomic `update-stages` manifest. In both cases use revisions returned by `get-stage`, not a locally reimplemented hash.
 6. Before leaving, update the Stage that owns the current decision, blocker, or next step. Do not create a separate chat-memory dump.

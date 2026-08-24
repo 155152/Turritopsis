@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from .api import Turritopsis
 from .briefing import build_briefing, read_handoff
 from .config import DATA_RELATIVE, load_llm_config, resolve_data
 from .exporter import export_project
@@ -26,6 +27,46 @@ SKELETON = [
     ("manual", "How to operate it", "Current deploy, diagnose, restore, and maintenance procedures"),
     ("genesis", "Why it became this", "Decisions, rejected paths, incidents, and history"),
 ]
+
+SKELETON_CONTRACT = """Skeleton JSON contract (do not inspect package source):
+{
+  "title": "Project title (optional)",
+  "subtitle": "Short description (optional)",
+  "classification_provenance": {
+    "source": "installed-agent",
+    "agent_self_reported": "free text; diagnostic only, not trusted identity",
+    "created_at": "ISO-8601 timestamp",
+    "notes": "optional"
+  },
+  "currents": [{
+    "id": "lowercase_id", "name": "Human name", "blurb": "Responsibility",
+    "stages": [{
+      "id": "lowercase_id.stage_id", "title": "Question destination",
+      "type": "orientation|authority|architecture|flow|contract|domain|data|boundary|operations|verification|build_release|handoff|decision|incident|history|generated_inventory",
+      "freshness": "volatile|steady|historical|generated",
+      "purpose": "Routing purpose", "search_hints": "terms people use",
+      "authority": "Facts this Stage alone owns",
+      "evidence_paths": ["repository/path"],
+      "update_triggers": ["What makes this stale"]
+    }]
+  }]
+}
+Evidence paths must exist in scan-evidence.json. apply-skeleton creates placeholder
+bodies; fill them with get-stage --all plus update-stages."""
+
+BATCH_CONTRACT = """Batch manifest JSON contract (body_file is relative to the manifest):
+{
+  "updates": [
+    {
+      "stage_id": "project.handoff",
+      "body_file": "bodies/project.handoff.md",
+      "expected_revision": "revision from: turritopsis get-stage --all",
+      "mode": "replace"
+    }
+  ]
+}
+All revisions are checked before one atomic stages.json write. Any conflict exits
+non-zero, prints the Stage and current revision, and applies none of the batch."""
 
 
 def _print(value):
@@ -190,6 +231,57 @@ def cmd_update_stage(args) -> int:
     return 0
 
 
+def cmd_get_stage(args) -> int:
+    service = Turritopsis(resolve_data(args.data))
+    if args.all and args.stage_id:
+        raise ValueError("choose stage_id or --all, not both")
+    if args.all:
+        data = service.store.load()
+        stage_ids = [
+            str(stage.get("id"))
+            for current in data.get("currents", [])
+            for stage in current.get("stages", [])
+        ]
+        _print({"stages": [service.get_stage(stage_id) for stage_id in stage_ids]})
+        return 0
+    if not args.stage_id:
+        raise ValueError("provide stage_id or --all")
+    _print(service.get_stage(args.stage_id))
+    return 0
+
+
+def cmd_update_stages(args) -> int:
+    manifest_path = Path(args.manifest).expanduser().resolve()
+    document = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict) or set(document) != {"updates"}:
+        raise ValueError("batch manifest must be an object containing only 'updates'")
+    manifest_updates = document["updates"]
+    if not isinstance(manifest_updates, list) or not manifest_updates:
+        raise ValueError("batch manifest updates must be a non-empty array")
+    updates = []
+    allowed = {"stage_id", "body_file", "expected_revision", "mode"}
+    for index, item in enumerate(manifest_updates):
+        if not isinstance(item, dict):
+            raise ValueError(f"updates[{index}] must be an object")
+        extra = sorted(set(item) - allowed)
+        if extra:
+            raise ValueError(f"updates[{index}] contains unsupported fields: {', '.join(extra)}")
+        missing = [key for key in ("stage_id", "body_file", "expected_revision") if not item.get(key)]
+        if missing:
+            raise ValueError(f"updates[{index}] missing required fields: {', '.join(missing)}")
+        body_path = Path(str(item["body_file"])).expanduser()
+        if not body_path.is_absolute():
+            body_path = manifest_path.parent / body_path
+        updates.append({
+            "stage_id": str(item["stage_id"]),
+            "body": body_path.resolve().read_text(encoding="utf-8"),
+            "expected_revision": str(item["expected_revision"]),
+            "mode": str(item.get("mode") or "replace"),
+        })
+    _print(Store(resolve_data(args.data)).update_stages(updates, actor=args.actor))
+    return 0
+
+
 def cmd_scan(args) -> int:
     _print(run_local_scan(
         Path(args.directory), refresh=args.refresh, agent=args.agent or "installed-agent"
@@ -239,7 +331,12 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--refresh", action="store_true", help="Replace an existing evidence snapshot")
     scan.add_argument("--agent", help="Installed Agent recorded in scan-run.json")
     scan.set_defaults(func=cmd_scan)
-    apply_map = sub.add_parser("apply-skeleton", help="Validate an Agent-authored skeleton and create stages.json")
+    apply_map = sub.add_parser(
+        "apply-skeleton",
+        help="Validate an Agent-authored skeleton and create stages.json",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=SKELETON_CONTRACT,
+    )
     apply_map.add_argument("skeleton")
     apply_map.add_argument("directory", nargs="?", default=".")
     apply_map.set_defaults(func=cmd_apply_skeleton)
@@ -258,11 +355,30 @@ def build_parser() -> argparse.ArgumentParser:
     update = sub.add_parser("update-stage", help="Replace or append a Stage body with revision protection")
     update.add_argument("stage_id")
     update.add_argument("--body-file", required=True, help="UTF-8 file containing the Stage body")
-    update.add_argument("--expected-revision", required=True, help="Revision returned by get_stage")
+    update.add_argument(
+        "--expected-revision",
+        required=True,
+        help="Revision returned by 'turritopsis get-stage STAGE_ID' or get-stage --all",
+    )
     update.add_argument("--actor", required=True)
     update.add_argument("--mode", choices=("replace", "append"), default="replace")
     update.add_argument("--data")
     update.set_defaults(func=cmd_update_stage)
+    get_stage = sub.add_parser("get-stage", help="Read Stage bodies and revisions for CLI writes")
+    get_stage.add_argument("stage_id", nargs="?")
+    get_stage.add_argument("--all", action="store_true", help="Return every Stage body and revision")
+    get_stage.add_argument("--data")
+    get_stage.set_defaults(func=cmd_get_stage)
+    update_many = sub.add_parser(
+        "update-stages",
+        help="Apply a revision-protected Stage batch atomically",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=BATCH_CONTRACT,
+    )
+    update_many.add_argument("--manifest", required=True)
+    update_many.add_argument("--actor", required=True)
+    update_many.add_argument("--data")
+    update_many.set_defaults(func=cmd_update_stages)
     current = sub.add_parser("add-current", help="Add a Current")
     current.add_argument("current_id"); current.add_argument("name"); current.add_argument("--glyph"); current.add_argument("--blurb"); current.add_argument("--data")
     current.set_defaults(func=cmd_add_current)
@@ -296,7 +412,8 @@ def main(argv=None) -> int:
         return int(args.func(args) or 0)
     except RevisionConflict as error:
         print(
-            f"error: revision conflict: requested {error.requested}, "
+            f"error: revision conflict for {error.stage.get('id', 'unknown Stage')}: "
+            f"requested {error.requested}, "
             f"current revision {error.current}",
             file=sys.stderr,
         )

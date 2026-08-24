@@ -152,8 +152,15 @@ turritopsis scan
 turritopsis apply-skeleton skeleton.json
 ```
 
-After `get_stage` returns the current revision, a CLI-only Agent can fill or amend
-the Stage without importing Turritopsis internals:
+The CLI exposes the same read/revision path, so an Agent never needs to inspect
+installed package source. Read one Stage or all skeleton placeholders:
+
+```bash
+turritopsis get-stage project.handoff
+turritopsis get-stage --all
+```
+
+For one body, use:
 
 ```bash
 turritopsis update-stage project.handoff \
@@ -165,6 +172,14 @@ turritopsis update-stage project.handoff \
 
 A stale revision exits non-zero and prints the current revision; it never silently
 overwrites the newer body.
+
+For a cold start with many Stages, `turritopsis update-stages --help` prints the
+batch manifest schema. One command validates every Stage and expected revision,
+then writes the complete batch atomically:
+
+```bash
+turritopsis update-stages --manifest updates.json --actor codex
+```
 
 `turritopsis init --scan` is a compatibility alias for the first command. It reads a bounded project tree, README files, manifests, CI/configuration documents, and other non-sensitive text materials, then writes `scan-evidence.json`, `scan-anomalies.json`, and `scan-run.json`. It uses no model, network, provider, or API key. Re-running `scan` resumes from the saved evidence unless `--refresh` is explicit, so an interrupted Agent never has to pay the scan cost again.
 

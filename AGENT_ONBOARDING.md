@@ -10,8 +10,11 @@ turritopsis scan
 turritopsis apply-skeleton skeleton.json
 ```
 
-Use `classification_provenance.agent_self_reported` for the Agent's free-text name.
-It is a diagnostic self-report, not verified provider/model provenance.
+Use the complete public skeleton and batch schema in
+`skills/turritopsis-onboarding/references/cli-contract.md` or run
+`turritopsis apply-skeleton --help`. Do not inspect installed package source to
+discover fields. `agent_self_reported` is a diagnostic self-report, not verified
+provider/model provenance.
 
 The scan is local, deterministic, resumable, and complete before classification starts. `apply-skeleton` rejects invented evidence, invalid ids, empty responsibilities, duplicate Authority, garbage-drawer Stages, and excessive fragmentation.
 
@@ -19,11 +22,11 @@ Do not assume `anatomy`, `flow`, `bounds`, `manual`, or `genesis` fits every pro
 
 After the skeleton is accepted, fill each Stage through `update_stage` with revision protection. Cite repository paths plus symbols, schemas, commands, or real artifacts. Preserve unknowns and conflicts; never convert a plausible inference or anomaly into canonical truth.
 
-CLI-only Agents should use:
+CLI-only Agents should read all placeholder revisions once and batch the bodies:
 
 ```bash
-turritopsis update-stage <stage_id> --body-file <path> \
-  --expected-revision <revision> --actor <name>
+turritopsis get-stage --all
+turritopsis update-stages --manifest updates.json --actor <name>
 ```
 
 Do not locate or import site-packages internals. Read `scan-run.json.warnings`

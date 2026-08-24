@@ -47,3 +47,17 @@ def test_skill_routes_to_local_scan_and_validated_application():
     assert "turritopsis apply-skeleton skeleton.json" in content
     assert "second model or API key" in content
     assert "one Stage per file" in content
+
+
+def test_skill_publishes_complete_cli_contract_without_source_discovery():
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    contract = (SKILL / "references" / "cli-contract.md").read_text(encoding="utf-8")
+    assert "references/cli-contract.md" in skill
+    for field in (
+        "classification_provenance", "agent_self_reported", "evidence_paths",
+        "update_triggers", "body_file", "expected_revision",
+    ):
+        assert field in contract
+    assert "turritopsis get-stage --all" in contract
+    assert "turritopsis update-stages" in contract
+    assert "calculate hashes or inspect `revisions.py`" in contract

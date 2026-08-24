@@ -174,6 +174,87 @@ class Store:
                 os.fsync(handle.fileno())
             return {"changed": True, "current": current.get("id"), **record}
 
+    def update_stages(self, updates: list[dict[str, Any]], actor: str = "unknown") -> dict[str, Any]:
+        """Apply a revision-protected Stage batch through one atomic data write."""
+        if not isinstance(updates, list) or not updates:
+            raise ValueError("updates must be a non-empty array")
+        if not all(isinstance(item, dict) for item in updates):
+            raise ValueError("every update must be an object")
+        stage_ids = [str(item.get("stage_id") or "") for item in updates]
+        if any(not stage_id for stage_id in stage_ids):
+            raise ValueError("every update requires stage_id")
+        if len(set(stage_ids)) != len(stage_ids):
+            raise ValueError("a Stage may appear only once in a batch")
+
+        with _locked(self.path):
+            data = self.load()
+            pending: list[dict[str, Any]] = []
+            for item, stage_id in zip(updates, stage_ids):
+                mode = str(item.get("mode") or "replace").lower().strip()
+                if mode not in {"replace", "append"}:
+                    raise ValueError(f"{stage_id}: mode must be replace or append")
+                expected = str(item.get("expected_revision") or "").strip()
+                if not expected:
+                    raise ValueError(f"{stage_id}: expected_revision is required")
+                current, stage = self.find_stage(data, stage_id)
+                if not stage:
+                    raise KeyError(f"Unknown stage: {stage_id}")
+                before_body = str(stage.get("body") or "")
+                before_revision = revision(before_body)
+                if expected != before_revision:
+                    raise RevisionConflict(expected, before_revision, stage.copy())
+                new_body = str(item.get("body") or "")
+                if mode == "append" and before_body.strip():
+                    new_body = before_body.rstrip() + "\n\n" + new_body.lstrip()
+                pending.append({
+                    "current": current,
+                    "stage": stage,
+                    "stage_id": stage_id,
+                    "mode": mode,
+                    "before_body": before_body,
+                    "before_revision": before_revision,
+                    "new_body": new_body,
+                    "after_revision": revision(new_body),
+                })
+
+            changed = [item for item in pending if item["new_body"] != item["before_body"]]
+            if not changed:
+                return {
+                    "changed": False,
+                    "updated": 0,
+                    "results": [
+                        {"changed": False, "stage_id": item["stage_id"],
+                         "revision": item["before_revision"]}
+                        for item in pending
+                    ],
+                }
+
+            backup = self._backup()
+            timestamp = datetime.now(timezone.utc).isoformat()
+            backup_name = backup.relative_to(self.root).as_posix()
+            records = []
+            for item in changed:
+                item["stage"]["body"] = item["new_body"]
+                records.append({
+                    "timestamp": timestamp,
+                    "actor": actor or "unknown",
+                    "stage_id": item["stage_id"],
+                    "mode": item["mode"],
+                    "before_revision": item["before_revision"],
+                    "after_revision": item["after_revision"],
+                    "backup": backup_name,
+                    "batch_size": len(changed),
+                })
+            data["version"] = int(data.get("version", 0)) + 1
+            self._atomic_write(data)
+            changelog = self.root / "changelog.jsonl"
+            with changelog.open("a", encoding="utf-8", newline="\n") as handle:
+                for record in records:
+                    handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            return {"changed": True, "updated": len(changed), "results": records}
+
     def mutate_structure(self, mutator, actor: str = "cli") -> Any:
         with _locked(self.path):
             data = self.load()

@@ -5,6 +5,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from turritopsis.cli import main
 from turritopsis.config import LLMConfig, load_llm_config
 from turritopsis.exporter import export_project
@@ -133,6 +135,86 @@ def test_update_stage_cli_writes_body_and_rejects_stale_revision(data_path, tmp_
     assert f"current revision {revision(current_body)}" in error
     after_conflict = json.loads(data_path.read_text(encoding="utf-8"))
     assert after_conflict["currents"][0]["stages"][0]["body"] == current_body
+
+
+def test_cli_help_is_the_public_skeleton_and_batch_contract(capsys):
+    with pytest.raises(SystemExit) as skeleton_exit:
+        main(["apply-skeleton", "--help"])
+    assert skeleton_exit.value.code == 0
+    skeleton_help = capsys.readouterr().out
+    assert "agent_self_reported" in skeleton_help
+    assert "evidence_paths" in skeleton_help
+    assert "orientation|authority|architecture" in skeleton_help
+    assert "do not inspect package source" in skeleton_help
+
+    with pytest.raises(SystemExit) as batch_exit:
+        main(["update-stages", "--help"])
+    assert batch_exit.value.code == 0
+    batch_help = capsys.readouterr().out
+    assert '"body_file"' in batch_help
+    assert '"expected_revision"' in batch_help
+    assert "applies none of the batch" in batch_help
+
+    with pytest.raises(SystemExit) as single_exit:
+        main(["update-stage", "--help"])
+    assert single_exit.value.code == 0
+    assert "turritopsis get-stage STAGE_ID" in capsys.readouterr().out
+
+
+def test_get_all_then_atomic_batch_update_without_source_inspection(data_path, tmp_path, capsys):
+    assert main(["get-stage", "--all", "--data", str(data_path)]) == 0
+    stages = json.loads(capsys.readouterr().out)["stages"]
+    revisions = {item["stage_id"]: item["revision"] for item in stages}
+    assert set(revisions) == {"project.handoff", "project.timeline"}
+
+    body_dir = tmp_path / "bodies"
+    body_dir.mkdir()
+    (body_dir / "handoff.md").write_text("# New handoff\n", encoding="utf-8")
+    (body_dir / "timeline.md").write_text("# New timeline\n", encoding="utf-8")
+    manifest = tmp_path / "updates.json"
+    manifest.write_text(json.dumps({"updates": [
+        {"stage_id": "project.handoff", "body_file": "bodies/handoff.md",
+         "expected_revision": revisions["project.handoff"]},
+        {"stage_id": "project.timeline", "body_file": "bodies/timeline.md",
+         "expected_revision": revisions["project.timeline"], "mode": "replace"},
+    ]}), encoding="utf-8")
+
+    before_version = json.loads(data_path.read_text(encoding="utf-8"))["version"]
+    assert main([
+        "update-stages", "--manifest", str(manifest), "--actor", "cold-start-agent",
+        "--data", str(data_path),
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["changed"] is True and result["updated"] == 2
+    document = json.loads(data_path.read_text(encoding="utf-8"))
+    assert document["version"] == before_version + 1
+    assert document["currents"][0]["stages"][0]["body"] == "# New handoff\n"
+    assert document["currents"][0]["stages"][1]["body"] == "# New timeline\n"
+    assert len(list((data_path.parent / "backups").glob("stages-*.json"))) == 1
+    records = [json.loads(line) for line in (data_path.parent / "changelog.jsonl").read_text(
+        encoding="utf-8"
+    ).splitlines()]
+    assert len(records) == 2 and all(item["batch_size"] == 2 for item in records)
+
+    current_revisions = {
+        stage["id"]: revision(stage["body"])
+        for stage in document["currents"][0]["stages"]
+    }
+    (body_dir / "handoff.md").write_text("# Must not land\n", encoding="utf-8")
+    (body_dir / "timeline.md").write_text("# Also must not land\n", encoding="utf-8")
+    stale_manifest = json.loads(manifest.read_text(encoding="utf-8"))
+    stale_manifest["updates"][0]["expected_revision"] = current_revisions["project.handoff"]
+    # Keep project.timeline's pre-batch revision stale to prove all-or-nothing behavior.
+    manifest.write_text(json.dumps(stale_manifest), encoding="utf-8")
+    assert main([
+        "update-stages", "--manifest", str(manifest), "--actor", "cold-start-agent",
+        "--data", str(data_path),
+    ]) == 3
+    error = capsys.readouterr().err
+    assert "project.timeline" in error
+    assert f"current revision {current_revisions['project.timeline']}" in error
+    after_conflict = json.loads(data_path.read_text(encoding="utf-8"))
+    assert after_conflict == document
 
 
 def test_maintain_updates_stale_stage_from_traceable_evidence(tmp_path):
