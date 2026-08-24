@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turritopsis Personal AI Assistant"
+  short_description: "Map consent, continuity, and assistant behavior"
+  default_prompt: "Use $turritopsis-personal-ai-assistant to design safe, human-centered Stages for this assistant."

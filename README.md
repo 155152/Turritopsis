@@ -69,6 +69,27 @@ Remote exposure is explicit (`--host 0.0.0.0`) and should be placed behind an au
 
 The repository includes a Codex-compatible Skill at `skills/turritopsis-onboarding/`. Copy that directory into your Codex skills folder, then invoke `$turritopsis-onboarding` when an agent initializes, joins, or resumes a project. The Skill teaches the installed Agent how to choose universal Stage responsibilities and project-specific suites instead of copying one project's Current names.
 
+### Scenario Skill packs
+
+Four optional Skills adapt the universal Stage contract to long-lived human–Agent systems:
+
+| Skill | Use it for |
+|---|---|
+| `turritopsis-agent-memory` | Evidence ingestion, accepted knowledge, recall, correction, retention, and rebuildable indexes |
+| `turritopsis-human-facing-pwa` | A PWA or web UI that is the human's first-class entry into an Agent or service |
+| `turritopsis-personal-ai-assistant` | Consent, private channels, proactive behavior, tool actions, relationship continuity, and human direction |
+| `turritopsis-persistent-agent-runtime` | Long-running sessions, relays, schedulers, tools, health, recovery, and context continuity |
+
+Copy only the directories you need from `skills/` into your Agent's skills folder. Invoke the base onboarding Skill plus one or more packs, for example:
+
+```text
+Use $turritopsis-onboarding and $turritopsis-agent-memory to map this repository.
+Use $turritopsis-onboarding, $turritopsis-personal-ai-assistant, and
+$turritopsis-persistent-agent-runtime to design the smallest sufficient Stage suite.
+```
+
+The packs are lenses, not templates. They recommend Stage responsibilities and judgment rules while leaving Current names and the final suite project-specific. Each includes one fictional fixture; none contains the authors' private paths, infrastructure, or project vocabulary.
+
 ## Knowledge model
 
 A **Current** routes a durable family of project questions. Current names are project-specific; `anatomy`, `flow`, `bounds`, `manual`, and `genesis` are useful for some long-running Agent systems, not universal defaults for every SDK, database, mobile client, ML pipeline, or device.

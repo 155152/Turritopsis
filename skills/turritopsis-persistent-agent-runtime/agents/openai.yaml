@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turritopsis Persistent Agent Runtime"
+  short_description: "Map long-running Agent bodies and recovery"
+  default_prompt: "Use $turritopsis-persistent-agent-runtime to design operational Stages for this persistent Agent runtime."

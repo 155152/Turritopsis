@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turritopsis Agent Memory"
+  short_description: "Design durable and correct Agent memory Stages"
+  default_prompt: "Use $turritopsis-agent-memory to design an evidence-governed memory Stage suite for this project."

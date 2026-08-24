@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turritopsis Human-facing PWA"
+  short_description: "Map a PWA as a first-class human interface"
+  default_prompt: "Use $turritopsis-human-facing-pwa to design a Stage suite for this human-facing PWA."
