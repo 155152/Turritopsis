@@ -1,0 +1,14 @@
+{
+  "title": "Fictional Electron Notes App",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "client", "name": "Client lifecycle", "blurb": "Navigation, state, offline, and sync", "stages": [
+      {"id": "client.state", "title": "Who owns note state online and offline", "type": "architecture", "freshness": "steady", "purpose": "Explain renderer/main-process boundaries and state ownership.", "search_hints": "electron state owner renderer main offline cache", "authority": "Client state ownership; excludes sync protocol details.", "evidence_paths": ["src/main/store.ts", "src/renderer/state.ts"], "update_triggers": ["Process boundaries or state ownership change"]},
+      {"id": "client.sync_flow", "title": "How an offline edit becomes a synced note", "type": "flow", "freshness": "volatile", "purpose": "Trace local write, queueing, conflict, retry, and terminal sync.", "search_hints": "offline edit sync conflict retry terminal", "authority": "Offline-to-online note lifecycle; excludes UI navigation.", "evidence_paths": ["src/sync/queue.ts", "docs/sync.md"], "update_triggers": ["Conflict, retry, or queue semantics change"]}
+    ]},
+    {"id": "shipping", "name": "Desktop distribution", "blurb": "Signing, updates, and diagnostics", "stages": [
+      {"id": "shipping.release", "title": "How desktop builds are signed and distributed", "type": "build_release", "freshness": "steady", "purpose": "Own build inputs, platform signing, update channels, and rollback.", "search_hints": "electron build signing notarize update channel rollback", "authority": "Desktop build and distribution; excludes runtime behavior.", "evidence_paths": ["electron-builder.yml", "docs/release.md"], "update_triggers": ["Signing, packaging, or update channels change"]},
+      {"id": "shipping.crash_diagnosis", "title": "How to diagnose startup and sync crashes", "type": "operations", "freshness": "volatile", "purpose": "Give log locations, first checks, and safe recovery.", "search_hints": "desktop crash startup log diagnose recover", "authority": "Client crash diagnosis; excludes release gates.", "evidence_paths": ["docs/diagnostics.md"], "update_triggers": ["Log locations or recovery steps change"]}
+    ]}
+  ]
+}

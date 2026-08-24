@@ -1,44 +1,52 @@
 ---
 name: turritopsis-onboarding
-description: Orient an agent in a long-running project backed by Turritopsis, retrieve only the relevant project truth, fill scan-created knowledge skeletons, preserve evidence and attribution, and hand work off without replaying prior chats. Use when a repository contains .turritopsis/stages.json, when joining or resuming a Turritopsis-managed project, or when asked to update, verify, brief, or maintain its shared project knowledge.
+description: Scan and map a software project with the currently installed Agent, design durable project-specific Stages, validate and apply skeletons, retrieve only relevant truth, and maintain evidence-backed knowledge without replaying chats or sending repository evidence to a second LLM. Use when joining, resuming, initializing, briefing, or maintaining a Turritopsis-managed project.
 ---
 
 # Turritopsis Onboarding
 
-Use Turritopsis as the project map, not as a replacement for live evidence. Route first, read narrowly, and record only what the repository or a named human source supports.
+Use the installed Agent as the classifier and writer. Keep scanning local and deterministic; never require a second model or API key for onboarding.
 
-## Arrive
+## Cold start
 
-1. Run `turritopsis brief` when the CLI and project checkout are available.
-2. With MCP, call `list_stages` for the map, `search_stages` for the current task, then `get_stage` for the few relevant Stages.
-3. Read any surfaced human handoff before asking questions. Treat it as authoritative about intent and priorities, but verify claims about current code.
-4. Do not open the entire JSON store merely to discover where knowledge lives.
+1. Run `turritopsis scan`. Reuse existing `scan-evidence.json` unless the repository changed enough to justify `--refresh`.
+2. Read `scan-run.json` first, then inspect coverage and omitted materials in `scan-evidence.json`. Do not assume the snapshot contains everything.
+3. Read [stage-types.md](references/stage-types.md). Select one responsibility for each Stage.
+4. Read [project-suites.md](references/project-suites.md). Choose the smallest suitable suite; combine suites for hybrids.
+5. Inspect only the evidence needed to classify durable knowledge regions. Do not generate one Stage per file, directory, or document.
+6. Write `skeleton.json` with `classification_provenance.source: installed-agent`, the current Agent name, and an ISO-8601 timestamp.
+7. Run `turritopsis apply-skeleton skeleton.json`. Fix every validation error instead of bypassing it.
+8. Fill Stage bodies from repository evidence through `update_stage` with revision protection.
 
-## Split the remaining work
+Use [paired-examples.md](references/paired-examples.md) when a Stage is structurally valid but vague. Use the seven fixtures when selecting a suite:
 
-- Treat filled, verified Stages as settled routing context. Recheck them only when the task or current diff can invalidate them.
-- Fill self-serve skeletons from the cited repository paths and their live dependencies.
-- Ask a person only for knowledge the repository cannot contain: rejected designs, red lines, manual recovery habits, ownership, or unresolved anomaly judgement.
-- Treat `scan-anomalies.json` as review leads, never canonical truth. Confirm a finding before using it in a Stage.
+- [fixture-web-saas.json](references/fixture-web-saas.json)
+- [fixture-library-sdk.json](references/fixture-library-sdk.json)
+- [fixture-data-ml.json](references/fixture-data-ml.json)
+- [fixture-mobile-desktop.json](references/fixture-mobile-desktop.json)
+- [fixture-infrastructure.json](references/fixture-infrastructure.json)
+- [fixture-embedded-iot.json](references/fixture-embedded-iot.json)
+- [fixture-research-protocol.json](references/fixture-research-protocol.json)
 
-## Write safely
+Fixtures are examples, not templates. Replace their fictional evidence paths and choose only the types the target project needs.
 
-Use `update_stage` with the Stage's current revision, a specific actor, and the smallest complete body change. Preserve the standard routing fields:
+## Write knowledge, not indexes
 
-```text
-Purpose: ...
-Search hints: ...
-Summary: ...
-Verified: YYYY-MM-DD by <source>
-Status: current|historical|generated|unresolved
-Authority: ...
-```
+- Give each Stage one complete knowledge responsibility.
+- Title it like a destination for a user question, not a directory name.
+- Put the direct answer in `Summary`; do not begin with background.
+- Separate current facts, decisions, history, incidents, and generated inventories.
+- Cite paths plus symbols, schemas, commands, or real artifacts when available.
+- Preserve conflicts and unknowns explicitly. Never smooth uncertainty into prose.
+- Give one Stage Authority over each fact; route duplicates to that Stage.
+- Split stable architecture from volatile handoff or runtime state.
+- Add concrete update triggers so later Agents know when verification is necessary.
 
-Leave an explicit placeholder when evidence is insufficient. Never turn a plausible inference or an anomaly into canonical fact.
+## Arrive and maintain
 
-## Maintain and hand off
-
-- Run `turritopsis maintain --model <cheap-model>` for evidence-based routine maintenance; use proposal mode when human approval is required.
-- Use the Web UI for human directional edits and MCP for agent retrieval and precise updates.
-- Before leaving, update the durable Stage that owns the current decision, blocker, or next step. Do not create a separate agent-memory layer or chat transcript dump.
-- Keep the MCP surface to `list_stages`, `search_stages`, `get_stage`, and `update_stage`; use CLI commands for scan, briefing, anomalies, export, scheduling, and maintenance.
+1. Run `turritopsis brief`, or use MCP in the order `list_stages` → `search_stages` → `get_stage`.
+2. Treat verified Stages as routing context, not as a replacement for live evidence.
+3. Treat anomaly output as leads requiring confirmation, never canonical truth.
+4. Ask a person only for an unresolved judgement the repository and supplied materials cannot answer.
+5. Use `update_stage` with the current revision, a named actor, and the smallest complete body change.
+6. Before leaving, update the Stage that owns the current decision, blocker, or next step. Do not create a separate chat-memory dump.

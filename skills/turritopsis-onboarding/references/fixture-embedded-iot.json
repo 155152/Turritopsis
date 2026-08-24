@@ -1,0 +1,14 @@
+{
+  "title": "Fictional ESP32 Climate Sensor",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "device", "name": "Device behavior", "blurb": "Hardware, firmware, timing, and protocol", "stages": [
+      {"id": "device.topology", "title": "How the sensor, MCU, power rail, and radio connect", "type": "architecture", "freshness": "steady", "purpose": "Own physical and firmware component responsibility.", "search_hints": "esp32 dht22 wiring gpio power radio topology", "authority": "Device topology and responsibility; excludes flashing steps.", "evidence_paths": ["hardware/schematic.pdf", "firmware/pins.h"], "update_triggers": ["Board revision, pin assignment, or component changes"]},
+      {"id": "device.sample_flow", "title": "How a timed sample becomes a transmitted reading", "type": "flow", "freshness": "steady", "purpose": "Trace wake, calibration, sampling, retry, buffering, and send.", "search_hints": "sample timing calibration retry buffer transmit", "authority": "Reading lifecycle and timing; excludes cloud ingestion.", "evidence_paths": ["firmware/sampler.c", "docs/timing.md"], "update_triggers": ["Timing, retry, calibration, or buffering changes"]},
+      {"id": "device.wire_contract", "title": "What the device sends over the wire", "type": "contract", "freshness": "steady", "purpose": "Own packet fields, units, versions, and invalid-reading behavior.", "search_hints": "mqtt packet protocol unit version invalid reading", "authority": "Device wire protocol; excludes transport infrastructure.", "evidence_paths": ["protocol/reading.cddl"], "update_triggers": ["Packet schema, units, or versioning changes"]}
+    ]},
+    {"id": "field", "name": "Field operation", "blurb": "Safety, flashing, and physical verification", "stages": [
+      {"id": "field.acceptance", "title": "How to prove firmware works on real hardware", "type": "verification", "freshness": "volatile", "purpose": "Separate compilation, bench tests, and field acceptance.", "search_hints": "hardware test fixture flash calibration acceptance", "authority": "Physical device acceptance; excludes CI-only tests.", "evidence_paths": ["tests/fixture/README.md"], "update_triggers": ["Fixture, board revision, or acceptance thresholds change"]}
+    ]}
+  ]
+}

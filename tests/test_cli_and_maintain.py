@@ -12,38 +12,6 @@ from turritopsis.generators import refresh_generated
 from turritopsis.maintain import maintain_stages
 
 
-class SkeletonLLM:
-    def complete_json(self, system, prompt, schema, schema_name):
-        assert "README.md" in prompt and "pyproject.toml" in prompt
-        # Source reaches the model as declarations, not as bodies: the signature
-        # is present, the implementation line that produced it is not.
-        assert "def enqueue(job, priority)" in prompt
-        assert "src/service.py" in prompt
-        assert "QUEUE = 'jobs'" not in prompt
-        assert "never invent" in system.lower()
-        assert schema_name == "turritopsis_project_skeleton"
-        return {"currents": [
-            {"id": "product", "name": "Product", "blurb": "Purpose and current direction", "stages": [
-                {"id": "product.overview", "title": "Product overview",
-                 "purpose": "Route product purpose and scope questions.",
-                 "search_hints": "product purpose scope users", "authority": "product scope",
-                 "evidence_paths": ["README.md"]},
-            ]},
-            {"id": "runtime", "name": "Runtime", "blurb": "Executable structure", "stages": [
-                {"id": "runtime.components", "title": "Runtime components",
-                 "purpose": "Locate the main executable components.",
-                 "search_hints": "runtime components package python", "authority": "runtime composition",
-                 "evidence_paths": ["pyproject.toml", "src/service.py"]},
-            ]},
-            {"id": "operations", "name": "Operations", "blurb": "Build and recovery", "stages": [
-                {"id": "operations.verify", "title": "Verification",
-                 "purpose": "Record the verified test and release path.",
-                 "search_hints": "test verify release rollback", "authority": "verification procedure",
-                 "evidence_paths": ["README.md"]},
-            ]},
-        ]}
-
-
 class MaintenanceLLM:
     def __init__(self):
         self.calls = []
@@ -89,35 +57,51 @@ def test_init_without_tty_falls_back_to_defaults(tmp_path, monkeypatch):
     assert [item["id"] for item in data["currents"]] == ["anatomy", "flow", "bounds", "manual", "genesis"]
 
 
-def test_init_scan_uses_llm_to_write_canonical_skeleton(tmp_path, monkeypatch):
+def test_init_scan_is_local_and_preserves_evidence_without_api_key(tmp_path, monkeypatch):
     (tmp_path / "src").mkdir()
     (tmp_path / "README.md").write_text("# Sample\nA queued service.", encoding="utf-8")
     (tmp_path / "pyproject.toml").write_text("[project]\nname='sample'", encoding="utf-8")
     (tmp_path / "src" / "service.py").write_text(
         "QUEUE = 'jobs'\n\n\ndef enqueue(job, priority):\n    return QUEUE\n", encoding="utf-8")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     config_dir = tmp_path / ".turritopsis"
-    config_dir.mkdir()
-    (config_dir / "config.json").write_text(json.dumps({"llm": {
-        "provider": "openai", "model": "small-model", "api_key_env": "TEST_LLM_KEY",
-    }}), encoding="utf-8")
-    monkeypatch.setattr("turritopsis.cli.LLMClient", lambda config: SkeletonLLM())
-
     assert main(["init", str(tmp_path), "--yes", "--name", "Sample", "--scan"]) == 0
-    data = json.loads((config_dir / "stages.json").read_text(encoding="utf-8"))
-    ids = [current["id"] for current in data["currents"]]
-    assert ids[:3] == ["product", "runtime", "operations"]
-    # A scan sees only code, so it only ever proposes code-shaped Currents. The map
-    # still needs somewhere to hold what was never committed, or an agent that later
-    # learns why a design won has nowhere to record it.
-    assert ids[3:] == ["genesis", "bounds", "manual"]
-    assert "ask the people who built it" in data["currents"][3]["stages"][0]["body"]
-    stage = data["currents"][1]["stages"][0]
-    assert stage["id"] == "runtime.components"
-    assert "Purpose: Locate the main executable components." in stage["body"]
-    assert "Status: unresolved" in stage["body"]
-    assert "[Placeholder: fill from verified project evidence.]" in stage["body"]
     assert (config_dir / "scan-evidence.json").is_file()
-    assert not list((config_dir / "proposals").glob("init-scan-*.json"))
+    assert (config_dir / "scan-anomalies.json").is_file()
+    run = json.loads((config_dir / "scan-run.json").read_text(encoding="utf-8"))
+    assert run["state"] == "evidence_ready"
+    assert run["classification_source"] == "pending-installed-agent"
+    assert not (config_dir / "stages.json").exists()
+
+
+def test_agent_skeleton_is_validated_and_applied(tmp_path):
+    (tmp_path / "README.md").write_text("# Shop\nOrders enter over HTTP.", encoding="utf-8")
+    assert main(["scan", str(tmp_path)]) == 0
+    skeleton = tmp_path / "skeleton.json"
+    skeleton.write_text(json.dumps({
+        "title": "Shop",
+        "classification_provenance": {
+            "source": "installed-agent", "agent": "codex", "created_at": "2026-08-24T00:00:00Z"
+        },
+        "currents": [{
+            "id": "orders", "name": "Order lifecycle", "blurb": "How orders move",
+            "stages": [{
+                "id": "orders.request_flow", "title": "How an order reaches a terminal state",
+                "type": "flow", "freshness": "steady",
+                "purpose": "Route questions about the order lifecycle.",
+                "search_hints": "order request success failure retry terminal",
+                "authority": "Order request lifecycle; excludes deployment.",
+                "evidence_paths": ["README.md"],
+                "update_triggers": ["The order state machine changes"],
+            }],
+        }],
+    }), encoding="utf-8")
+    assert main(["apply-skeleton", str(skeleton), str(tmp_path)]) == 0
+    data = json.loads((tmp_path / ".turritopsis" / "stages.json").read_text(encoding="utf-8"))
+    body = data["currents"][0]["stages"][0]["body"]
+    assert "Type: flow" in body
+    assert "Freshness: steady" in body
+    assert "## Update triggers" in body
 
 
 def test_maintain_updates_stale_stage_from_traceable_evidence(tmp_path):

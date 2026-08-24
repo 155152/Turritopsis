@@ -1,4 +1,4 @@
 interface:
   display_name: "Turritopsis Onboarding"
-  short_description: "Route and maintain long-running project knowledge"
-  default_prompt: "Use $turritopsis-onboarding to orient in this project before making changes."
+  short_description: "Scan locally and build durable project knowledge"
+  default_prompt: "Use $turritopsis-onboarding to scan this project locally, design project-specific Stages, and apply a validated skeleton."

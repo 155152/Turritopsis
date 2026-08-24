@@ -139,28 +139,15 @@ def test_anomalies_are_written_beside_the_knowledge_base_never_into_it(tmp_path)
     (config_dir / "config.json").write_text(json.dumps({"llm": {
         "provider": "openai", "model": "m", "api_key_env": "TEST_LLM_KEY"}}), encoding="utf-8")
 
-    class LLM:
-        def complete_json(self, system, prompt, schema, schema_name):
-            return {"currents": [
-                {"id": f"c{index}", "name": f"C{index}", "blurb": "b", "stages": [
-                    {"id": f"c{index}.overview", "title": "T", "purpose": "p",
-                     "search_hints": "h", "authority": "a", "evidence_paths": ["README.md"]}]}
-                for index in range(3)]}
-
-    import turritopsis.cli as cli
-    original = cli.LLMClient
-    cli.LLMClient = lambda config: LLM()
-    try:
-        assert main(["init", str(tmp_path), "--yes", "--name", "Svc", "--scan"]) == 0
-    finally:
-        cli.LLMClient = original
+    assert main(["init", str(tmp_path), "--yes", "--name", "Svc", "--scan"]) == 0
 
     anomalies = json.loads((config_dir / "scan-anomalies.json").read_text(encoding="utf-8"))
     assert "legacy_still_load_bearing" in {item["kind"] for item in anomalies["findings"]}
-    # The leads must not have leaked into the trusted half.
-    stages = (config_dir / "stages.json").read_text(encoding="utf-8")
-    assert "legacy_still_load_bearing" not in stages
-    assert "anomal" not in stages.lower()
+    # Scan no longer creates trusted Stages before the installed Agent classifies
+    # evidence. Leads remain in their own report and do not contaminate evidence.
+    evidence = (config_dir / "scan-evidence.json").read_text(encoding="utf-8")
+    assert "legacy_still_load_bearing" not in evidence
+    assert not (config_dir / "stages.json").exists()
 
 
 def test_brief_refreshes_the_persisted_anomaly_report(tmp_path, capsys):

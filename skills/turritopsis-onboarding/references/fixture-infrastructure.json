@@ -1,0 +1,14 @@
+{
+  "title": "Fictional Kubernetes Internal Platform",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "platform", "name": "Platform authority", "blurb": "Topology, ownership, and change flow", "stages": [
+      {"id": "platform.truth", "title": "Which configuration and runtime surfaces are authoritative", "type": "authority", "freshness": "volatile", "purpose": "Define source, rendered, cluster, and ownership precedence.", "search_hints": "kubernetes authority config rendered cluster owner truth", "authority": "Platform truth precedence; excludes change procedure.", "evidence_paths": ["docs/ownership.md", "clusters/README.md"], "update_triggers": ["Repository, cluster, or ownership boundaries change"]},
+      {"id": "platform.change_flow", "title": "How a declared change reaches a running cluster", "type": "flow", "freshness": "steady", "purpose": "Trace review, render, reconcile, health, failure, and rollback.", "search_hints": "gitops deploy reconcile rollout failure rollback", "authority": "Declared-to-runtime change lifecycle; excludes secret contents.", "evidence_paths": ["docs/gitops.md", "controllers/reconciler.go"], "update_triggers": ["Promotion, reconciliation, or rollback changes"]}
+    ]},
+    {"id": "resilience", "name": "Resilience", "blurb": "Boundaries, incidents, and recovery", "stages": [
+      {"id": "resilience.security", "title": "Which platform actions require elevated authority", "type": "boundary", "freshness": "steady", "purpose": "Own secret, production, and destructive-operation gates.", "search_hints": "security permission secret production delete approval", "authority": "Platform authorization boundaries; excludes credential values.", "evidence_paths": ["policies/production.rego"], "update_triggers": ["Policies or approval ownership change"]},
+      {"id": "resilience.restore", "title": "How to prove backup restore before an incident", "type": "operations", "freshness": "volatile", "purpose": "Give backup authority, restore order, and acceptance evidence.", "search_hints": "backup restore disaster recovery verify", "authority": "Platform backup and restore; excludes application data semantics.", "evidence_paths": ["docs/restore.md"], "update_triggers": ["Backup target, restore sequence, or acceptance changes"]}
+    ]}
+  ]
+}

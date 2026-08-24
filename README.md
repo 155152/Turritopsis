@@ -67,23 +67,29 @@ Remote exposure is explicit (`--host 0.0.0.0`) and should be placed behind an au
 
 ### Agent onboarding skill
 
-The repository includes a real Codex-compatible Skill at `skills/turritopsis-onboarding/`. Copy that directory into your Codex skills folder, then invoke `$turritopsis-onboarding` when an agent joins or resumes a Turritopsis-managed project. The Skill routes through the four MCP tools, uses `brief` for cold start, and keeps anomalies separate from canonical truth.
+The repository includes a Codex-compatible Skill at `skills/turritopsis-onboarding/`. Copy that directory into your Codex skills folder, then invoke `$turritopsis-onboarding` when an agent initializes, joins, or resumes a project. The Skill teaches the installed Agent how to choose universal Stage responsibilities and project-specific suites instead of copying one project's Current names.
 
 ## Knowledge model
 
-A **Current** routes a kind of project question. The default currents are `anatomy`, `flow`, `bounds`, `manual`, and `genesis`; a long-lived domain may also be its own Current.
+A **Current** routes a durable family of project questions. Current names are project-specific; `anatomy`, `flow`, `bounds`, `manual`, and `genesis` are useful for some long-running Agent systems, not universal defaults for every SDK, database, mobile client, ML pipeline, or device.
 
 A **Stage** is one complete, named knowledge region—not an arbitrary text chunk. Stage Markdown may contain English or Chinese metadata:
 
 ```markdown
 # Current work and handoff
 
+Type: handoff
 Purpose: Tell a new contributor where work currently stands.
 Search hints: handoff blocker next step release current work
 Summary: Release is frozen pending hardware regression.
 Verified: 2026-08-24 by agent
 Status: current
 Authority: current work, next action
+Freshness: volatile
+
+## Update triggers
+
+- The blocker or next action changes.
 ```
 
 Keep current truth, historical explanation, and deterministic generated facts in separate Stages. `Status: historical` never silently presents itself as current authority. A generated Stage should say that manual edits will be overwritten.
@@ -107,6 +113,7 @@ All reads reload `stages.json`. Writes take a file lock, compare only the target
 ├── config.json
 ├── scan-evidence.json
 ├── scan-anomalies.json
+├── scan-run.json
 ├── changelog.jsonl
 ├── maintenance.jsonl
 ├── backups/
@@ -115,9 +122,20 @@ All reads reload `stages.json`. Writes take a file lock, compare only the target
 
 Ordinary `turritopsis init` asks for the main modules and creates initial Current/Stage addresses. `--modules` supplies the same answer non-interactively.
 
-`turritopsis init --scan` reads a bounded project tree, README files, manifests, CI/configuration documents, and other non-sensitive text materials. An LLM classifies that evidence into the first 3–8 Currents and Stage addresses. It may author titles, Purpose, Search hints, Authority, and evidence routing; unverified canonical knowledge remains an explicit placeholder. The captured input is written to `scan-evidence.json` for reviewability.
+Cold start is deliberately split into a local deterministic scan and an installed-Agent classification:
 
-Scan and maintenance share `.turritopsis/config.json`:
+```bash
+turritopsis scan
+# The current Codex/Claude Agent reads scan-run.json and scan-evidence.json,
+# chooses Stage types and a project suite, then writes skeleton.json.
+turritopsis apply-skeleton skeleton.json
+```
+
+`turritopsis init --scan` is a compatibility alias for the first command. It reads a bounded project tree, README files, manifests, CI/configuration documents, and other non-sensitive text materials, then writes `scan-evidence.json`, `scan-anomalies.json`, and `scan-run.json`. It uses no model, network, provider, or API key. Re-running `scan` resumes from the saved evidence unless `--refresh` is explicit, so an interrupted Agent never has to pay the scan cost again.
+
+The installed Agent—not a second external LLM—classifies that evidence. `apply-skeleton` validates schema, provenance, Current and Stage ids, evidence paths, Stage type/freshness, empty responsibilities, duplicate Authority, garbage drawers, and fragmentation before atomically creating `stages.json`. It never overwrites an existing knowledge base; later writes must use revision-protected `update_stage`. Canonical knowledge still starts as explicit placeholders and must be filled from verified evidence.
+
+Optional LLM-backed maintenance uses `.turritopsis/config.json`; scanning and skeleton application never read it:
 
 ```json
 {
@@ -165,7 +183,7 @@ The sole automatic-write exception is an explicitly generated Stage with a deter
 
 Built-in deterministic types are `git_revision`, `file_hash`, and `path_exists`. Their output is visibly marked auto-generated and does not use the LLM.
 
-Core list/search/get/update, Web UI, and MCP serving require no LLM and no API key. Only `init --scan` and automatic curated maintenance do.
+Core list/search/get/update, Web UI, MCP serving, scan, and skeleton application require no LLM and no API key. Only optional automatic curated maintenance does.
 
 ## License
 

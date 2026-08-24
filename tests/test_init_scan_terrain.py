@@ -6,10 +6,8 @@ from pathlib import Path
 import pytest
 
 from turritopsis.init_scan import (
-    OUTPUT_CONTRACT,
     _import_counts,
     _import_graph,
-    generate_skeleton,
     scan_project,
     survey_terrain,
 )
@@ -113,13 +111,6 @@ def test_structure_coverage_reports_what_the_budget_dropped(aged_project):
     assert coverage["files_skipped"] == 3
 
 
-def test_prompt_states_the_output_contract():
-    # Only the OpenAI /responses path enforces the schema; the other two providers
-    # need the shape spelled out or the model guesses the Stage shape for Currents.
-    for key in ("id", "name", "blurb", "stages", "search_hints", "evidence_paths"):
-        assert key in OUTPUT_CONTRACT
-
-
 def test_terrain_survey_separates_sediment_from_live_code(aged_project):
     report = survey_terrain(aged_project)
     assert report["buried_files"] == 4          # 3 in backups-release + 1 in _retired
@@ -130,63 +121,6 @@ def test_terrain_survey_separates_sediment_from_live_code(aged_project):
     # only the genuinely inert module is reported.
     assert "orphan.py" in report["unreferenced_sources"]
     assert "entry.py" not in report["unreferenced_sources"]
-
-
-class _InventingLLM:
-    """Returns one real evidence path and one that never existed."""
-
-    def complete_json(self, system, prompt, schema, schema_name):
-        return {"currents": [
-            {"id": "core", "name": "Core", "blurb": "Core of the service", "stages": [
-                {"id": "core.store", "title": "Store", "purpose": "Route storage questions.",
-                 "search_hints": "store value", "authority": "storage",
-                 "evidence_paths": ["store.py", "store.py.bak-20260622-old"]},
-            ]},
-            {"id": "edge", "name": "Edge", "blurb": "Entry points", "stages": [
-                {"id": "edge.entry", "title": "Entry", "purpose": "Route startup questions.",
-                 "search_hints": "entry main", "authority": "startup",
-                 "evidence_paths": ["entry.py"]},
-            ]},
-            {"id": "ops", "name": "Ops", "blurb": "Operations", "stages": [
-                {"id": "ops.api", "title": "API", "purpose": "Route API questions.",
-                 "search_hints": "api http", "authority": "api",
-                 "evidence_paths": ["api.py"]},
-            ]},
-        ]}
-
-
-def test_invented_evidence_is_dropped_not_fatal(aged_project):
-    data, evidence = generate_skeleton(aged_project, "Svc", "", _InventingLLM())
-    body = data["currents"][0]["stages"][0]["body"]
-    assert "store.py" in body
-    assert "store.py.bak-20260622-old" not in body
-    assert evidence["invented_evidence_paths"] == ["core.store -> store.py.bak-20260622-old"]
-
-
-class _FullyInventingLLM(_InventingLLM):
-    def complete_json(self, system, prompt, schema, schema_name):
-        result = super().complete_json(system, prompt, schema, schema_name)
-        result["currents"][0]["stages"][0]["evidence_paths"] = ["does/not/exist.py"]
-        return result
-
-
-def test_stage_with_only_invented_evidence_still_fails(aged_project):
-    with pytest.raises(ValueError, match="only unknown evidence"):
-        generate_skeleton(aged_project, "Svc", "", _FullyInventingLLM())
-
-
-def test_repository_currents_reserve_room_for_human_knowledge(aged_project):
-    class TooMany(_InventingLLM):
-        def complete_json(self, system, prompt, schema, schema_name):
-            template = super().complete_json(system, prompt, schema, schema_name)["currents"][0]
-            return {"currents": [
-                {**template, "id": f"c{index}", "stages": [
-                    {**template["stages"][0], "id": f"c{index}.overview"}]}
-                for index in range(6)
-            ]}
-
-    with pytest.raises(ValueError, match="3-5 repository-derived"):
-        generate_skeleton(aged_project, "Svc", "", TooMany())
 
 
 def test_credential_files_never_reach_the_model(tmp_path):

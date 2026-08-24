@@ -9,11 +9,13 @@ from pathlib import Path
 from .briefing import build_briefing, read_handoff
 from .config import DATA_RELATIVE, load_llm_config, resolve_data
 from .exporter import export_project
-from .init_scan import _human_knowledge_currents, generate_skeleton, scan_anomalies, survey_terrain
+from .init_scan import _human_knowledge_currents, scan_anomalies, survey_terrain
 from .llm import LLMClient, LLMError
 from .maintain import apply_proposal, maintain_stages, write_proposal
 from .scheduler import install_schedule, remove_schedule, show_schedule
+from .scan_run import run_local_scan
 from .server import serve
+from .skeletons import apply_skeleton
 from .store import Store
 
 
@@ -72,15 +74,10 @@ def cmd_init(args) -> int:
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     if args.scan:
-        config = load_llm_config(project_root=root, model_override=args.model)
-        data, evidence = generate_skeleton(root, title, subtitle, LLMClient(config))
-        evidence_path = path.parent / "scan-evidence.json"
-        evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        # Leads live beside the knowledge base, never inside it: a Stage is meant to
-        # be trusted, an anomaly is meant to be checked, and one shelf cannot hold both.
-        anomalies_path = path.parent / "scan-anomalies.json"
-        anomalies_path.write_text(
-            json.dumps(scan_anomalies(root), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        result = run_local_scan(root, refresh=args.force)
+        result.update({"title": title, "subtitle": subtitle})
+        _print(result)
+        return 0
     else:
         if modules:
             # Named modules are code-shaped too, so the same guarantee applies as
@@ -179,6 +176,18 @@ def cmd_survey(args) -> int:
     return 0
 
 
+def cmd_scan(args) -> int:
+    _print(run_local_scan(
+        Path(args.directory), refresh=args.refresh, agent=args.agent or "installed-agent"
+    ))
+    return 0
+
+
+def cmd_apply_skeleton(args) -> int:
+    _print(apply_skeleton(Path(args.directory), Path(args.skeleton)))
+    return 0
+
+
 def cmd_brief(args) -> int:
     data_path = resolve_data(args.data)
     root = data_path.parent.parent
@@ -208,9 +217,18 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("directory", nargs="?", default=".")
     init.add_argument("--name"); init.add_argument("--description"); init.add_argument("--yes", action="store_true")
     init.add_argument("--modules", help="Comma-separated project modules for non-scan initialization")
-    init.add_argument("--scan", action="store_true"); init.add_argument("--model")
+    init.add_argument("--scan", action="store_true")
     init.add_argument("--force", action="store_true")
     init.set_defaults(func=cmd_init)
+    scan = sub.add_parser("scan", help="Create a local evidence snapshot without a model or network")
+    scan.add_argument("directory", nargs="?", default=".")
+    scan.add_argument("--refresh", action="store_true", help="Replace an existing evidence snapshot")
+    scan.add_argument("--agent", help="Installed Agent recorded in scan-run.json")
+    scan.set_defaults(func=cmd_scan)
+    apply_map = sub.add_parser("apply-skeleton", help="Validate an Agent-authored skeleton and create stages.json")
+    apply_map.add_argument("skeleton")
+    apply_map.add_argument("directory", nargs="?", default=".")
+    apply_map.set_defaults(func=cmd_apply_skeleton)
     survey = sub.add_parser("survey", help="Report what would mislead a newcomer to this repository")
     survey.add_argument("directory", nargs="?", default=".")
     survey.set_defaults(func=cmd_survey)

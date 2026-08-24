@@ -1,0 +1,14 @@
+{
+  "title": "Fictional Recommender Pipeline",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "training", "name": "Training evidence", "blurb": "Lineage, features, and evaluation", "stages": [
+      {"id": "training.lineage", "title": "Where training rows and labels come from", "type": "data", "freshness": "volatile", "purpose": "Own source lineage, joins, retention, and leakage boundaries.", "search_hints": "training data label lineage leakage retention", "authority": "Training dataset lineage; excludes model metrics.", "evidence_paths": ["pipelines/build_dataset.py", "docs/data-card.md"], "update_triggers": ["Sources, joins, labels, or retention change"]},
+      {"id": "training.evaluation", "title": "What the offline evaluation can and cannot prove", "type": "verification", "freshness": "steady", "purpose": "Define metrics, slices, baselines, and acceptance limits.", "search_hints": "model evaluation metric baseline slice acceptance", "authority": "Offline evaluation methodology; excludes online product impact.", "evidence_paths": ["eval/metrics.py", "docs/evaluation.md"], "update_triggers": ["Metrics, datasets, baselines, or gates change"]}
+    ]},
+    {"id": "serving", "name": "Online inference", "blurb": "Model boundary and request lifecycle", "stages": [
+      {"id": "serving.contract", "title": "What the model accepts and returns online", "type": "contract", "freshness": "steady", "purpose": "Own feature schema, output semantics, and fallback behavior.", "search_hints": "inference feature schema output fallback model", "authority": "Online inference contract; excludes training implementation.", "evidence_paths": ["serving/schema.json", "serving/app.py"], "update_triggers": ["Feature schema, output, or fallback changes"]},
+      {"id": "serving.request_flow", "title": "How an inference request reaches a recommendation", "type": "flow", "freshness": "volatile", "purpose": "Trace validation, feature lookup, inference, fallback, and response.", "search_hints": "inference request feature lookup timeout fallback", "authority": "Online request lifecycle; excludes model selection rationale.", "evidence_paths": ["serving/app.py", "serving/features.py"], "update_triggers": ["Ownership, timeout, retry, or fallback changes"]}
+    ]}
+  ]
+}

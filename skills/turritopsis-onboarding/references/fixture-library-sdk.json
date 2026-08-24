@@ -1,0 +1,14 @@
+{
+  "title": "Fictional PixelForge SDK",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "surface", "name": "Caller contract", "blurb": "Public API and compatibility promises", "stages": [
+      {"id": "surface.resize_api", "title": "What resize promises to SDK callers", "type": "contract", "freshness": "steady", "purpose": "Own inputs, outputs, errors, mutation, and compatibility.", "search_hints": "resize public api error compatibility mutate", "authority": "Public resize contract; excludes internal codecs.", "evidence_paths": ["src/pixelforge/api.py", "docs/api.md"], "update_triggers": ["Public signatures, errors, or compatibility policy change"]},
+      {"id": "surface.extensions", "title": "How third-party codecs plug into PixelForge", "type": "contract", "freshness": "steady", "purpose": "Explain the extension lifecycle and version boundary.", "search_hints": "plugin codec extension register lifecycle", "authority": "Codec extension contract; excludes built-in implementations.", "evidence_paths": ["src/pixelforge/plugins.py"], "update_triggers": ["Plugin hooks or lifecycle change"]}
+    ]},
+    {"id": "distribution", "name": "Compatibility and release", "blurb": "Test matrix, packaging, and migration", "stages": [
+      {"id": "distribution.matrix", "title": "Which runtimes and image formats are supported", "type": "verification", "freshness": "volatile", "purpose": "Map compatibility claims to tests and exclusions.", "search_hints": "python version format compatibility test matrix", "authority": "Supported runtime/format matrix; excludes release commands.", "evidence_paths": ["tox.ini", "tests/compat/"], "update_triggers": ["A runtime or format enters or leaves support"]},
+      {"id": "distribution.release", "title": "How an SDK release is built without breaking callers", "type": "build_release", "freshness": "steady", "purpose": "Own versioning, artifact checks, and release gates.", "search_hints": "wheel package version release semver rollback", "authority": "SDK build and release policy; excludes API semantics.", "evidence_paths": ["pyproject.toml", "docs/releasing.md"], "update_triggers": ["Packaging, signing, or version policy changes"]}
+    ]}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "title": "Fictional Open Container Format",
+  "classification_provenance": {"source": "example", "agent": "documentation", "created_at": "2026-08-24T00:00:00Z"},
+  "currents": [
+    {"id": "specification", "name": "Normative format", "blurb": "Terminology, wire contract, and conformance", "stages": [
+      {"id": "specification.terms", "title": "What container, segment, and record mean", "type": "domain", "freshness": "steady", "purpose": "Own normative terminology and concept boundaries.", "search_hints": "container segment record terminology definition", "authority": "Protocol terminology; excludes implementation advice.", "evidence_paths": ["spec/terminology.md"], "update_triggers": ["Normative definitions change"]},
+      {"id": "specification.format", "title": "How a conforming container is encoded and rejected", "type": "contract", "freshness": "steady", "purpose": "Own byte layout, validation, errors, and version compatibility.", "search_hints": "file format encoding parser invalid version compatibility", "authority": "Normative encoding and rejection contract; excludes rationale.", "evidence_paths": ["spec/format.md"], "update_triggers": ["Normative layout, errors, or versioning change"]},
+      {"id": "specification.conformance", "title": "What proves an implementation conforms", "type": "verification", "freshness": "volatile", "purpose": "Map normative claims to fixtures and pass criteria.", "search_hints": "conformance test fixture valid invalid implementation", "authority": "Protocol conformance evidence; excludes performance.", "evidence_paths": ["conformance/README.md"], "update_triggers": ["Normative requirements or fixtures change"]}
+    ]},
+    {"id": "rationale", "name": "Evidence and decisions", "blurb": "Experiments, alternatives, and unresolved questions", "stages": [
+      {"id": "rationale.checksum", "title": "Why the format chose per-segment checksums", "type": "decision", "freshness": "historical", "purpose": "Record alternatives, evidence, and reevaluation conditions.", "search_hints": "checksum decision crc hash alternative corruption", "authority": "Checksum design rationale; excludes normative encoding.", "evidence_paths": ["decisions/0007-checksums.md"], "update_triggers": ["Threat model or corruption evidence changes"]}
+    ]}
+  ]
+}

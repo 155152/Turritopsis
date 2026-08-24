@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -134,44 +134,6 @@ MAX_TOTAL_CHARS = 70000
 MAX_PROSE_CHARS = 20000
 
 
-SKELETON_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "currents": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "name": {"type": "string"},
-                    "blurb": {"type": "string"},
-                    "stages": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {"type": "string"},
-                                "title": {"type": "string"},
-                                "purpose": {"type": "string"},
-                                "search_hints": {"type": "string"},
-                                "authority": {"type": "string"},
-                                "evidence_paths": {"type": "array", "items": {"type": "string"}},
-                            },
-                            "required": ["id", "title", "purpose", "search_hints", "authority", "evidence_paths"],
-                            "additionalProperties": False,
-                        },
-                    },
-                },
-                "required": ["id", "name", "blurb", "stages"],
-                "additionalProperties": False,
-            },
-        }
-    },
-    "required": ["currents"],
-    "additionalProperties": False,
-}
-
-
 def _is_archaeology(relative: Path) -> bool:
     """True when a path lives under a backup/archive/retired/deploy-snapshot directory."""
     for part in relative.parts[:-1]:
@@ -179,28 +141,6 @@ def _is_archaeology(relative: Path) -> bool:
         if lowered.startswith(SKIP_DIR_PREFIXES):
             return True
     return False
-
-
-# Only the OpenAI /responses path sends SKELETON_SCHEMA to the model as an enforced
-# json_schema. The anthropic and openai-compatible paths ask for "a JSON object" and
-# nothing more, so the shape has to be stated in the prompt or the model has to guess
-# it — and it guesses the Stage shape, because that is all the prompt described.
-OUTPUT_CONTRACT = """
-Return exactly this JSON shape:
-
-{"currents": [
-  {"id": "lowercase_ascii", "name": "Human readable name", "blurb": "One line on what this Current covers",
-   "stages": [
-     {"id": "<current_id>.topic", "title": "...", "purpose": "...",
-      "search_hints": "space separated keywords", "authority": "what this Stage is the authority on",
-      "evidence_paths": ["path/from/the/supplied/tree"]}
-   ]}
-]}
-
-Every Current object must have all four keys: id, name, blurb, stages.
-Every Stage object must have all six keys: id, title, purpose, search_hints, authority, evidence_paths.
-No other keys are allowed anywhere.
-"""
 
 
 def _safe_file(path: Path, root: Path) -> bool:
@@ -688,102 +628,5 @@ def _human_knowledge_currents(existing: set[str]) -> list[dict[str, Any]]:
     return currents
 
 
-def _valid_id(value: str) -> bool:
-    return bool(re.fullmatch(r"[a-z][a-z0-9_-]*", value))
-
-
-def _stage_body(stage: dict[str, Any]) -> str:
-    paths = [str(path) for path in stage.get("evidence_paths", [])]
-    evidence = "\n".join(f"- `{path}`" for path in paths) or "- [Placeholder: add an evidence path]"
-    authority = stage.get("authority", "") or "unassigned"
-    return (
-        f"# {stage['title']}\n\n"
-        f"Purpose: {stage['purpose']}\n"
-        f"Search hints: {stage['search_hints']}\n"
-        "Summary: [Placeholder: verify and describe this knowledge region.]\n"
-        "Verified: not yet verified\n"
-        "Status: unresolved\n"
-        f"Authority: {authority}\n\n"
-        "## Knowledge\n\n"
-        "[Placeholder: fill from verified project evidence.]\n\n"
-        "## Evidence to review\n\n"
-        f"{evidence}\n"
-    )
-
-
-def generate_skeleton(
-    root: Path,
-    title: str,
-    subtitle: str,
-    client,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    evidence = scan_project(root)
-    prompt = (
-        "Classify this long-running software project into 3-5 durable repository-derived knowledge Currents. "
-        "The local program separately guarantees genesis, bounds, and manual Currents, so do not add filler. "
-        "Create addressable Stage skeletons, not a code index. Use only the supplied project tree and materials. "
-        "Stage titles, purposes, search hints, authority scopes, and relevant evidence paths are allowed. "
-        "Do not assert unverified project facts; canonical bodies will be created locally as placeholders. "
-        "Every Stage id must be current_id.topic, lowercase ASCII, and every evidence path must appear in the supplied tree.\n"
-        "\nEVIDENCE FORMAT. 'tree' lists the bounded live-file sample used by this scan. Each entry in 'materials' "
-        "carries a 'role', and 'evidence_roles' says what question that role can "
-        "answer — the roles are not a ranking, they support different Currents. "
-        "'structure_map' is a declaration outline of the source: each entry is a "
-        "real file path, its inbound import count, and the classes and function "
-        "signatures it declares; 'structure_coverage' states what fit in the budget. High import counts mark the modules the project is "
-        "built out of; group Currents around those. The outline is not the source, "
-        "so describe what a file is responsible for, never what its implementation "
-        "does. 'sediment' is counts and paths only, for superseded and retired "
-        "files: never cite it as evidence for current behaviour, but a large or "
-        "dated sediment layer is itself evidence that a history Current is warranted.\n"
-        + OUTPUT_CONTRACT +
-        f"\nPROJECT EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
-    )
-    result = client.complete_json(
-        "You design conservative, evidence-routed project knowledge maps. You never invent canonical truth.",
-        prompt, SKELETON_SCHEMA, "turritopsis_project_skeleton",
-    )
-    currents = result.get("currents", [])
-    if not 3 <= len(currents) <= 5:
-        raise ValueError("LLM skeleton must contain 3-5 repository-derived Currents")
-    known_paths = set(evidence["tree"])
-    seen_currents: set[str] = set()
-    seen_stages: set[str] = set()
-    invented: list[str] = []
-    canonical_currents = []
-    for current in currents:
-        current_id = current["id"].strip()
-        if not _valid_id(current_id) or current_id in seen_currents:
-            raise ValueError(f"Invalid or duplicate Current id from LLM: {current_id}")
-        seen_currents.add(current_id)
-        canonical_stages = []
-        for stage in current["stages"]:
-            stage_id = stage["id"].strip()
-            if not re.fullmatch(rf"{re.escape(current_id)}\.[a-z][a-z0-9_.-]*", stage_id) or stage_id in seen_stages:
-                raise ValueError(f"Invalid or duplicate Stage id from LLM: {stage_id}")
-            cited = list(dict.fromkeys(stage["evidence_paths"]))
-            unknown = [path for path in cited if path not in known_paths]
-            grounded = [path for path in cited if path in known_paths]
-            if unknown and not grounded:
-                raise ValueError(
-                    f"LLM Stage {stage_id} cited only unknown evidence: {', '.join(sorted(unknown))}"
-                )
-            if unknown:
-                # A model shown a tree full of xxx.py.bak-<date> files learns the
-                # pattern and invents more of them. Drop the invented paths, keep
-                # the Stage, and surface the count instead of failing the whole scan.
-                invented.extend(f"{stage_id} -> {path}" for path in sorted(unknown))
-                stage = {**stage, "evidence_paths": grounded}
-            seen_stages.add(stage_id)
-            canonical_stages.append({"id": stage_id, "title": stage["title"].strip(), "body": _stage_body(stage)})
-        canonical_currents.append({
-            "id": current_id, "name": current["name"].strip(),
-            "blurb": current["blurb"].strip(), "stages": canonical_stages,
-        })
-    canonical_currents.extend(_human_knowledge_currents(seen_currents))
-    if invented:
-        evidence = {**evidence, "invented_evidence_paths": invented}
-    return {
-        "title": title, "subtitle": subtitle, "version": 1,
-        "currents": canonical_currents,
-    }, evidence
+# Installed-Agent classification and Stage validation live in skeletons.py. This
+# scanner deliberately stops at evidence and never invokes a model or network.
