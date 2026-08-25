@@ -17,6 +17,11 @@ dependencies = [
   "uvicorn>=0.30,<1",
 ]
 
+[project.urls]
+Homepage = "https://github.com/anhe2021212-spec/Turritopsis"
+Repository = "https://github.com/anhe2021212-spec/Turritopsis.git"
+Issues = "https://github.com/anhe2021212-spec/Turritopsis/issues"
+
 [project.optional-dependencies]
 test = ["pytest>=8,<9"]
 

@@ -2,6 +2,10 @@
 
 **A shared handoff layer for long-running projects.**
 
+[![CI](https://github.com/anhe2021212-spec/Turritopsis/actions/workflows/ci.yml/badge.svg)](https://github.com/anhe2021212-spec/Turritopsis/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 **1 human + 4 agents. 71 days. 500K lines of active code.**
 
 > Agents come and go. Projects shouldn't forget.
@@ -36,6 +40,19 @@ Turritopsis grew out of one human running a real long-term system with four diff
 **The human edited direction, not bookkeeping.** The Web UI provided a project map, Stage editor, live Markdown preview, revision conflicts, proposals, and history. The human corrected priorities, boundaries, and project meaning while agents maintained implementation detail from traceable evidence.
 
 The practical result was continuity without forcing every agent to become the memory system. Agents could disappear, sessions could end, and a new coding window could still find the current truth and continue the work.
+
+## Evidence, including failures
+
+A preregistered cold-start evaluation ran the same blank Agent workflow against four
+third-party open-source projects: `fd`, Datasette, Atuin, and Bruno. Across 293,261 lines
+and 5,271 files, it produced 56 project-shaped Stages in 23m31s. All 56 were structurally
+complete and preserved explicit unknowns. The evaluation also found weak top-1 retrieval,
+coverage dilution on fragmented repositories, and the hard boundary between repository
+snapshot truth and live operational truth.
+
+Read the full methodology, frozen commits, results, corrections, and limitations in
+[`EVALUATION.md`](EVALUATION.md). The negative results are part of the evidence, not edited
+out of the story.
 
 ## Install and start
 
