@@ -153,6 +153,8 @@ async def update_stage(request: Request) -> Response:
     result = service.update_stage(
         stage_id, str(payload.get("body", "")), payload.get("mode", "replace"),
         payload.get("expected_revision", ""), payload.get("actor", "human-web-ui"),
+        reason=payload.get("reason", ""), verification=payload.get("verification"),
+        commit=payload.get("commit", ""),
     )
     return JSONResponse(result, status_code=409 if result.get("conflict") else 200)
 

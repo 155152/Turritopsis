@@ -32,6 +32,23 @@ class RevisionConflict(RuntimeError):
         self.stage = stage
 
 
+def _change_context(reason: Any = "", verification: Any = None, commit: Any = "") -> dict[str, Any]:
+    context: dict[str, Any] = {}
+    reason_text = str(reason or "").strip()
+    if reason_text:
+        context["reason"] = reason_text
+    if verification is not None:
+        if not isinstance(verification, list) or not all(isinstance(item, str) for item in verification):
+            raise ValueError("verification must be an array of strings")
+        checks = [item.strip() for item in verification if item.strip()]
+        if checks:
+            context["verification"] = checks
+    commit_text = str(commit or "").strip()
+    if commit_text:
+        context["commit"] = commit_text
+    return context
+
+
 @contextmanager
 def _locked(path: Path) -> Iterator[None]:
     lock_path = path.with_suffix(path.suffix + ".lock")
@@ -135,7 +152,9 @@ class Store:
         return target
 
     def update_stage(self, stage_id: str, body: str, mode: str = "replace",
-                     expected_revision: str | None = None, actor: str = "unknown") -> dict[str, Any]:
+                     expected_revision: str | None = None, actor: str = "unknown",
+                     reason: str = "", verification: list[str] | None = None,
+                     commit: str = "") -> dict[str, Any]:
         mode = mode.lower().strip()
         if mode not in {"replace", "append"}:
             raise ValueError("mode must be replace or append")
@@ -166,6 +185,7 @@ class Store:
                 "before_revision": before_revision,
                 "after_revision": after_revision,
                 "backup": backup.relative_to(self.root).as_posix(),
+                **_change_context(reason, verification, commit),
             }
             changelog = self.root / "changelog.jsonl"
             with changelog.open("a", encoding="utf-8", newline="\n") as handle:
@@ -215,6 +235,9 @@ class Store:
                     "before_revision": before_revision,
                     "new_body": new_body,
                     "after_revision": revision(new_body),
+                    "change_context": _change_context(
+                        item.get("reason", ""), item.get("verification"), item.get("commit", "")
+                    ),
                 })
 
             changed = [item for item in pending if item["new_body"] != item["before_body"]]
@@ -244,6 +267,7 @@ class Store:
                     "after_revision": item["after_revision"],
                     "backup": backup_name,
                     "batch_size": len(changed),
+                    **item["change_context"],
                 })
             data["version"] = int(data.get("version", 0)) + 1
             self._atomic_write(data)

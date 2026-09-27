@@ -61,7 +61,10 @@ BATCH_CONTRACT = """Batch manifest JSON contract (body_file is relative to the m
       "stage_id": "project.handoff",
       "body_file": "bodies/project.handoff.md",
       "expected_revision": "revision from: turritopsis get-stage --all",
-      "mode": "replace"
+      "mode": "replace",
+      "reason": "Why this durable engineering state changed",
+      "verification": ["restart verified", "focused tests passed"],
+      "commit": "optional git commit"
     }
   ]
 }
@@ -226,6 +229,9 @@ def cmd_update_stage(args) -> int:
         mode=args.mode,
         expected_revision=args.expected_revision,
         actor=args.actor,
+        reason=args.reason,
+        verification=args.verification,
+        commit=args.commit,
     )
     _print(result)
     return 0
@@ -259,7 +265,7 @@ def cmd_update_stages(args) -> int:
     if not isinstance(manifest_updates, list) or not manifest_updates:
         raise ValueError("batch manifest updates must be a non-empty array")
     updates = []
-    allowed = {"stage_id", "body_file", "expected_revision", "mode"}
+    allowed = {"stage_id", "body_file", "expected_revision", "mode", "reason", "verification", "commit"}
     for index, item in enumerate(manifest_updates):
         if not isinstance(item, dict):
             raise ValueError(f"updates[{index}] must be an object")
@@ -277,6 +283,9 @@ def cmd_update_stages(args) -> int:
             "body": body_path.resolve().read_text(encoding="utf-8"),
             "expected_revision": str(item["expected_revision"]),
             "mode": str(item.get("mode") or "replace"),
+            "reason": item.get("reason", ""),
+            "verification": item.get("verification"),
+            "commit": item.get("commit", ""),
         })
     _print(Store(resolve_data(args.data)).update_stages(updates, actor=args.actor))
     return 0
@@ -362,6 +371,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     update.add_argument("--actor", required=True)
     update.add_argument("--mode", choices=("replace", "append"), default="replace")
+    update.add_argument("--reason", default="", help="Why this durable engineering state changed")
+    update.add_argument(
+        "--verification", action="append", default=None,
+        help="Verification evidence; repeat for multiple checks",
+    )
+    update.add_argument("--commit", default="", help="Optional Git commit associated with the change")
     update.add_argument("--data")
     update.set_defaults(func=cmd_update_stage)
     get_stage = sub.add_parser("get-stage", help="Read Stage bodies and revisions for CLI writes")

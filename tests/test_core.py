@@ -30,13 +30,34 @@ def test_get_is_complete_and_update_logs_backup(data_path):
     api = Turritopsis(data_path)
     before = api.get_stage("project.handoff")
     assert "Run the hardware regression" in before["body"]
-    result = api.update_stage("project.handoff", "Added evidence.", "append", before["revision"], "codex")
+    result = api.update_stage(
+        "project.handoff", "Added evidence.", "append", before["revision"], "codex",
+        reason="Confirmed the durable handoff changed after runtime acceptance",
+        verification=["focused tests passed", "runtime accepted"],
+        commit="abc1234",
+    )
     assert result["ok"] and result["changed"]
     assert "Added evidence." in api.get_stage("project.handoff")["body"]
     assert list((data_path.parent / "backups").glob("stages-*.json"))
     assert json.loads(data_path.read_text(encoding="utf-8"))["version"] == 2
     log = json.loads((data_path.parent / "changelog.jsonl").read_text(encoding="utf-8").splitlines()[0])
     assert log["actor"] == "codex" and log["stage_id"] == "project.handoff"
+    assert log["reason"] == "Confirmed the durable handoff changed after runtime acceptance"
+    assert log["verification"] == ["focused tests passed", "runtime accepted"]
+    assert log["commit"] == "abc1234"
+
+
+def test_change_context_is_optional_and_not_written_as_empty_noise(data_path):
+    api = Turritopsis(data_path)
+    before = api.get_stage("project.handoff")
+    result = api.update_stage(
+        "project.handoff", "Plain update.", "append", before["revision"], "codex",
+    )
+    assert result["ok"] and result["changed"]
+    log = json.loads((data_path.parent / "changelog.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert "reason" not in log
+    assert "verification" not in log
+    assert "commit" not in log
 
 
 def test_same_stage_conflict_different_stage_updates_succeed(data_path):

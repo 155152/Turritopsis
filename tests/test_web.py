@@ -73,6 +73,25 @@ def test_web_search_and_stage_reader_use_same_core(data_path):
         assert len(stage["siblings"]) == 2
 
 
+def test_web_history_returns_optional_engineering_change_context(data_path):
+    core = Turritopsis(data_path)
+    current = core.get_stage("project.handoff")
+    with TestClient(create_http_app(data_path)) as client:
+        response = client.put("/api/stages/project.handoff", json={
+            "body": "# Accepted runtime state\n", "expected_revision": current["revision"],
+            "actor": "human-web-ui", "reason": "runtime acceptance changed the durable state",
+            "verification": ["manual acceptance passed"], "commit": "cafebabe",
+        })
+        assert response.status_code == 200
+        history = client.get("/api/history").json()["entries"]
+        assert len(history) == 1
+        assert history[0]["reason"] == "runtime acceptance changed the durable state"
+        assert history[0]["verification"] == ["manual acceptance passed"]
+        assert history[0]["commit"] == "cafebabe"
+        detail = client.get("/api/history/0").json()["entry"]
+        assert detail["reason"] == history[0]["reason"]
+
+
 def test_web_editor_returns_revision_conflict_without_overwrite(data_path):
     core = Turritopsis(data_path)
     stale = core.get_stage("project.handoff")["revision"]

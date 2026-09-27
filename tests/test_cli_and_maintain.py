@@ -119,10 +119,16 @@ def test_update_stage_cli_writes_body_and_rejects_stale_revision(data_path, tmp_
     assert main([
         "update-stage", "project.handoff", "--data", str(data_path),
         "--body-file", str(body_file), "--expected-revision", original_revision,
-        "--actor", "cold-start-agent",
+        "--actor", "cold-start-agent", "--reason", "runtime truth changed",
+        "--verification", "focused tests passed", "--verification", "manual acceptance passed",
+        "--commit", "deadbee",
     ]) == 0
     updated = json.loads(data_path.read_text(encoding="utf-8"))
     assert updated["currents"][0]["stages"][0]["body"] == body_file.read_text(encoding="utf-8")
+    log = json.loads((data_path.parent / "changelog.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert log["reason"] == "runtime truth changed"
+    assert log["verification"] == ["focused tests passed", "manual acceptance passed"]
+    assert log["commit"] == "deadbee"
 
     body_file.write_text("# Silent overwrite must not happen\n", encoding="utf-8")
     assert main([
@@ -153,6 +159,7 @@ def test_cli_help_is_the_public_skeleton_and_batch_contract(capsys):
     batch_help = capsys.readouterr().out
     assert '"body_file"' in batch_help
     assert '"expected_revision"' in batch_help
+    assert '"reason"' in batch_help and '"verification"' in batch_help and '"commit"' in batch_help
     assert "applies none of the batch" in batch_help
 
     with pytest.raises(SystemExit) as single_exit:
@@ -174,7 +181,9 @@ def test_get_all_then_atomic_batch_update_without_source_inspection(data_path, t
     manifest = tmp_path / "updates.json"
     manifest.write_text(json.dumps({"updates": [
         {"stage_id": "project.handoff", "body_file": "bodies/handoff.md",
-         "expected_revision": revisions["project.handoff"]},
+         "expected_revision": revisions["project.handoff"],
+         "reason": "handoff acceptance changed", "verification": ["tests passed"],
+         "commit": "123abcd"},
         {"stage_id": "project.timeline", "body_file": "bodies/timeline.md",
          "expected_revision": revisions["project.timeline"], "mode": "replace"},
     ]}), encoding="utf-8")
@@ -195,6 +204,12 @@ def test_get_all_then_atomic_batch_update_without_source_inspection(data_path, t
         encoding="utf-8"
     ).splitlines()]
     assert len(records) == 2 and all(item["batch_size"] == 2 for item in records)
+    handoff_record = next(item for item in records if item["stage_id"] == "project.handoff")
+    assert handoff_record["reason"] == "handoff acceptance changed"
+    assert handoff_record["verification"] == ["tests passed"]
+    assert handoff_record["commit"] == "123abcd"
+    timeline_record = next(item for item in records if item["stage_id"] == "project.timeline")
+    assert "reason" not in timeline_record and "verification" not in timeline_record and "commit" not in timeline_record
 
     current_revisions = {
         stage["id"]: revision(stage["body"])

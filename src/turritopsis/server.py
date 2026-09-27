@@ -31,9 +31,13 @@ def create_server(data_path=None, host: str = "127.0.0.1", port: int = 3013,
 
     @mcp.tool()
     def update_stage(stage_id: str, body: str, mode: str = "replace",
-                     expected_revision: str = "", actor: str = "agent") -> dict:
-        """Replace or append a Stage with optional optimistic revision checking."""
-        return service.update_stage(stage_id, body, mode, expected_revision, actor)
+                     expected_revision: str = "", actor: str = "agent", reason: str = "",
+                     verification: list[str] | None = None, commit: str = "") -> dict:
+        """Replace or append a Stage with optional revision and engineering change context."""
+        return service.update_stage(
+            stage_id, body, mode, expected_revision, actor,
+            reason=reason, verification=verification, commit=commit,
+        )
 
     return mcp
 

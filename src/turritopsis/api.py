@@ -70,9 +70,13 @@ class Turritopsis:
         }
 
     def update_stage(self, stage_id: str, body: str, mode: str = "replace",
-                     expected_revision: str = "", actor: str = "agent") -> dict[str, Any]:
+                     expected_revision: str = "", actor: str = "agent", reason: str = "",
+                     verification: list[str] | None = None, commit: str = "") -> dict[str, Any]:
         try:
-            result = self.store.update_stage(stage_id, body, mode, expected_revision or None, actor)
+            result = self.store.update_stage(
+                stage_id, body, mode, expected_revision or None, actor,
+                reason=reason, verification=verification, commit=commit,
+            )
             return {"ok": True, **result}
         except RevisionConflict as conflict:
             current_stage = self.get_stage(stage_id)
